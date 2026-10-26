@@ -44,7 +44,7 @@ const RETRIES = Number(process.env.WEIBO_RETRIES || 3);
 const MAX_PAGES = Number(process.env.WEIBO_MAX_PAGES || 4);
 const MAX_ITEMS_PER_SOURCE = Number(process.env.MAX_ITEMS_PER_SOURCE || 60);
 
-const WEIBO_COOKIE = (process.env.WEIBO_COOKIE || '').trim();
+const WEIBO_COOKIE = require('./cookie-utils').loadCookie(ROOT);
 
 // 微博移动端接口要求的请求头（照抄 RSSHub 的 apiHeaders）
 const API_HEADERS = {
@@ -338,11 +338,13 @@ async function fetchSource(source) {
 
 async function main() {
   if (!WEIBO_COOKIE) {
-    log('⚠️ 未配置 WEIBO_COOKIE —— 微博会返回 432，抓不到任何内容。');
-    log('   本地试跑：WEIBO_COOKIE="你的cookie" node scripts/fetch-weibo.js');
-    log('   GitHub 上跑：在仓库 Settings → Secrets 里添加 WEIBO_COOKIE。');
-  } else if (!/SUB=/.test(WEIBO_COOKIE)) {
-    log('⚠️ WEIBO_COOKIE 里没有 SUB —— 微博几乎一定返回 432，请确认复制的是完整 Cookie。');
+    log('⚠️ 没有 Cookie —— 微博会返回 432，抓不到任何内容。');
+    log('   本地试跑：node scripts/try-local.js（会一步步教你怎么做）');
+    log('   GitHub 上跑：在仓库 Settings → Secrets and variables → Actions 里添加 WEIBO_COOKIE。');
+  } else if (!require('./cookie-utils').hasSub(WEIBO_COOKIE)) {
+    log('⚠️ Cookie 里没有 SUB —— 微博几乎一定返回 432。');
+    log('   微博把 SUB 设成了 HttpOnly，只能从 DevTools 的「网络 → 请求标头」里复制。');
+    log('   ⚠️ 别点成「预检」请求（OPTIONS），预检不带 Cookie。');
   }
 
   const sources = SOURCES.map((s) =>

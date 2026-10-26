@@ -26,7 +26,7 @@ const { spawn } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const RAW_FILE = path.join(ROOT, 'data', 'raw-weibo.json');
 
-const COOKIE = (process.env.WEIBO_COOKIE || '').trim() || readCookieFile();
+const RAW_COOKIE = (process.env.WEIBO_COOKIE || '').trim() || readCookieFile();
 
 /**
  * Cookie 也可以放在仓库根目录的 cookie.txt 里（已被 .gitignore 排除）。
@@ -46,6 +46,11 @@ function readCookieFile() {
   return '';
 }
 
+// 格式识别逻辑放在共用模块里（fetch-weibo.js 也用同一份）
+const { extractCookie, hasSub } = require('./cookie-utils');
+
+const COOKIE = extractCookie(RAW_COOKIE);
+
 function line(s) { console.log(s); }
 
 async function main() {
@@ -61,8 +66,27 @@ async function main() {
     line('  【怎么拿 Cookie】');
     line('    1. 浏览器登录微博（小号也行，能看到这三个号的动态就够）');
     line('    2. 打开 https://m.weibo.cn/u/5523180767');
-    line('    3. F12 → Network 面板 → 点任意一个请求 → Request Headers');
-    line('    4. 复制 Cookie 那一整行（形如 SUB=xxx; SSOLoginState=xxx; ...）');
+    line('    3. F12 → 切到「网络」标签 → 按 F5 刷新页面');
+    line('    4. 在左边请求列表里，点一条名字带 getIndex 的请求');
+    line('    5. 右边「请求标头」里找到 Cookie 那一行，右键 → 复制值');
+    line('');
+    line('  【怎么粘】');
+    line('    把复制到的东西整个粘进这个文件（脚本会自动认出格式）：');
+    line('      ' + path.join(ROOT, 'cookie.txt'));
+    line('    支持这几种：');
+    line('      · SUB=xxx; SSOLoginState=xxx; ...      （直接复制值）');
+    line('      · Cookie: SUB=xxx; ...                  （带前缀也行）');
+    line('      · curl "..." -H "cookie: SUB=xxx; ..."  （DevTools「复制为 cURL」）');
+    line('');
+    line('  【⚠️ 常见卡点：看到「显示的是预检标头」】');
+    line('    那说明你点的是 CORS 预检（OPTIONS）请求 —— 预检请求不带 Cookie！');
+    line('    解决方法：');
+    line('      · 在「网络」面板的「筛选」框输入 getIndex，只看匹配的请求');
+    line('      · 或者按 F5 刷新后，点类型为「fetch」/「xhr」的那条，不是「预检」');
+    line('');
+    line('  【⚠️ 必须包含 SUB= 这一段】');
+    line('    微博把 SUB 设成了 HttpOnly，JS 读不到，只能从请求头里拿。');
+    line('    少了它微博一律返回 432，什么都抓不到。');
     line('');
     line('  【放哪里 —— 二选一】');
     line('');

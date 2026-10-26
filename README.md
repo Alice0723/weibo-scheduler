@@ -35,18 +35,37 @@ GitHub Actions（每天 10:17）
 
 1. 浏览器登录微博（**小号也行**，只要能看到这三个号的动态就可以）
 2. 地址栏打开 `https://m.weibo.cn/u/5523180767`
-3. 按 `F12` → 切到 **Network** 面板 → 点任意一个请求 → 找到 **Request Headers** 里的 `Cookie`
-4. 把 `Cookie:` 后面的**整段**复制下来（形如 `SUB=xxxx; SSOLoginState=xxxx; ...`）
+3. 按 `F12` → 切到 **「网络」** 标签 → **按 F5 刷新页面**
+4. 在左边请求列表里点一条**名字带 `getIndex`** 的请求
+   （也可以在筛选框输入 `getIndex`，只看匹配的）
+5. 右边出现 **请求标头 → 请求方法**，下面有一条 **`Cookie:`**
+6. **右键那一行 → 复制值**
 
 > ⚠️ **必须有 `SUB=` 这一段**，否则微博一律返回 432，什么都抓不到。
+> 微博把 SUB 设成了 HttpOnly，JS 读不到，**只能从请求头里复制**。
+
+> ⚠️ **看到「显示的是预检标头」就点错请求了** ——
+> 那是 CORS 预检（OPTIONS）请求，**预检不带 Cookie**。
+> 解决：筛选框输入 `getIndex`，点类型是 `fetch`/`xhr` 的那条，不是「预检」。
 
 **2. 试跑**
 
-在项目目录下执行（Git Bash / PowerShell 都行）：
+把复制到的东西粘进 `weibo-scheduler/cookie.txt`（脚本能自动认出各种格式）：
+
+| 你复制到的 | 脚本认不认 |
+|---|---|
+| `SUB=xxx; SSOLoginState=xxx; ...` | ✓ |
+| `Cookie: SUB=xxx; ...` | ✓ |
+| `curl "..." -H "cookie: SUB=xxx; ..."`（DevTools「复制为 cURL」） | ✓ |
+| 整段请求头（多行） | ✓ |
+
+然后在项目目录下执行（PowerShell / Git Bash 都行）：
 
 ```bash
-WEIBO_COOKIE="你刚复制的那一整段" node scripts/try-local.js
+node scripts/try-local.js
 ```
+
+PowerShell 用户也可以直接跑 `.\try-local.ps1`（会自动处理中文乱码）。
 
 成功的话会看到：
 
@@ -159,6 +178,8 @@ const WEIBO_SCHEDULE_REPO = {
 | 现象 | 原因 | 怎么办 |
 |---|---|---|
 | Actions 标红，日志说 432 | Cookie 缺 `SUB` 或已失效 | 重新登录微博，重新复制完整 Cookie 更新 Secret |
+| DevTools 里找不到 Cookie | 点成了「预检」请求 | 预检（OPTIONS）不带 Cookie，改点 `getIndex` 那条 |
+| `document.cookie` 里没有 SUB | 微博把 SUB 设成 HttpOnly | 只能从 DevTools「网络 → 请求标头」复制 |
 | Actions 标红，日志说 `ok=-100` | Cookie 过期 | 同上 |
 | Actions 标红，LLM 报 401 | GitHub Models 额度用完 | 配一个 `LLM_API_KEY` Secret（DeepSeek 几分钱一次） |
 | Actions 标红，LLM 报 400 token 超限 | 微博正文太长 | 调小 `scripts/extract-schedules.js` 顶部的 `LLM_CHAR_BUDGET` |
@@ -206,15 +227,19 @@ const WEIBO_SCHEDULE_REPO = {
 scripts/
   fetch-weibo.js        抓取（直连 m.weibo.cn）
   extract-schedules.js  LLM 抽取 + 校验 + 去重
+  cookie-utils.js       Cookie 格式识别（多种复制格式都能认）
   try-local.js          本地试跑（配 GitHub 之前先验证 Cookie）
   verify-fetch.js       抓取逻辑验证
   verify-extract.js     抽取逻辑验证
   verify-llm.js         LLM 通道与分批验证
+  verify-cookie.js      Cookie 格式识别验证
   verify-e2e.js         端到端管道验证
   verify-miniprogram.js 小程序侧接入验证
+try-local.ps1           Windows 一键试跑（自动处理编码）
 data/
   raw-weibo.json        原始动态（自动生成，不进版本库）
   weibo-schedules.json  最终日程（自动生成，小程序读这个）
+cookie.txt              本地放 Cookie（自动 gitignore，别提交）
 .github/workflows/
   fetch-weibo.yml       定时任务
 ```
@@ -223,6 +248,6 @@ data/
 
 ```bash
 node scripts/verify-fetch.js && node scripts/verify-extract.js && \
-node scripts/verify-llm.js && node scripts/verify-e2e.js && \
-node scripts/verify-miniprogram.js
+node scripts/verify-llm.js && node scripts/verify-cookie.js && \
+node scripts/verify-e2e.js && node scripts/verify-miniprogram.js
 ```
