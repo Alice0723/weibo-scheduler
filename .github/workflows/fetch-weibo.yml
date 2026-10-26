@@ -3,11 +3,13 @@ name: 微博日程抓取
 # 每天拉一次三个微博账号的动态，抽出日程写进 data/weibo-schedules.json。
 # 小程序直接读这个 JSON（raw.githubusercontent.com），服务器零参与。
 #
-# 整条流水线只需要 1 个 Secret：WEIBO_COOKIE。
-# LLM 抽取用仓库自带的 GITHUB_TOKEN 走 GitHub Models（免费），不用额外配 API Key。
+# 需要 2 个 Secret：
+#   WEIBO_COOKIE   —— 微博 Cookie（必填）
+#   ZHIPUAI_API_KEY —— 智谱 GLM-4-Flash 永久免费不限量（推荐）
+#                     也可用 LLM_API_KEY / SILICONFLOW_API_KEY / DASHSCOPE_API_KEY
 #
-# 如果你不想用 GitHub Models，可以自己加一个 Secret 叫 LLM_API_KEY，
-# 脚本会自动优先用它（DeepSeek / 通义 / 智谱 等 OpenAI 兼容接口都行）。
+# ⚠️ 之前文档说的「用仓库自带的 GITHUB_TOKEN 走 GitHub Models」已失效 ——
+#    GitHub Models 于 2026-07-30 彻底下线，inference API 不再可用。
 
 on:
   schedule:
@@ -22,7 +24,7 @@ on:
 
 permissions:
   contents: write   # 要把抓到的数据提交回仓库
-  models: read       # 用 GitHub Models 免费做 LLM 抽取
+  # ⚠️ 不再需要 models: read —— GitHub Models 已于 2026-07-30 下线
 
 concurrency:
   group: weibo-fetch
@@ -49,16 +51,18 @@ jobs:
       - name: 环境自检
         env:
           WEIBO_COOKIE: ${{ secrets.WEIBO_COOKIE }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          ZHIPUAI_API_KEY: ${{ secrets.ZHIPUAI_API_KEY }}
+          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
         run: node -e "
           const c = process.env.WEIBO_COOKIE || '';
           console.log('--- 环境自检 ---');
           console.log('WEIBO_COOKIE 长度:', c.length);
           console.log('是否包含 SUB=  :', /(^|;\s*)SUB=/.test(c) ? '是' : '否  ← 问题在这');
-          console.log('是否包含 432  :', c.includes('432') ? '是' : '否');
-          console.log('GITHUB_TOKEN  :', process.env.GITHUB_TOKEN ? '有（可走 GitHub Models）' : '无');
-          console.log('LLM_API_KEY   :', process.env.LLM_API_KEY ? '有' : '无（将走 GitHub Models）');
+          const keys = ['LLM_API_KEY','ZHIPUAI_API_KEY','SILICONFLOW_API_KEY','DASHSCOPE_API_KEY'];
+          const found = keys.filter(k => process.env[k]);
+          console.log('可用的 LLM Key :', found.length ? found.join(', ') : '无  ← 问题在这');
           if (!c) {
             console.log('');
             console.log('❌ Secret 没读到。检查：');
@@ -73,7 +77,14 @@ jobs:
             console.log('❌ Cookie 里没有 SUB= —— 微博会返回 432。');
             process.exit(1);
           }
-          console.log('✓ Cookie 就绪');
+          if (!found.length) {
+            console.log('');
+            console.log('❌ 没配 LLM Key，无法抽取日程。');
+            console.log('   推荐 ZHIPUAI_API_KEY（智谱 GLM-4-Flash 永久免费）：');
+            console.log('   https://open.bigmodel.cn → API Keys → 创建 → 复制 key');
+            process.exit(1);
+          }
+          console.log('✓ 环境就绪');
         "
 
       - name: 抓取微博动态
@@ -85,11 +96,13 @@ jobs:
 
       - name: LLM 抽取日程
         env:
-          # 自带的 LLM_API_KEY 优先；没有就自动走 GitHub Models
+          # 任意一个配了就能用，按 extract-schedules.js 里的优先级探测
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ZHIPUAI_API_KEY: ${{ secrets.ZHIPUAI_API_KEY }}
+          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
         run: node scripts/extract-schedules.js
 
       - name: 提交结果

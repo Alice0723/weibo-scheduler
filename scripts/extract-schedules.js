@@ -14,13 +14,18 @@
  *      校验不过的直接丢弃，宁缺毋滥。
  *
  * ── LLM 通道（自动选择，优先级从高到低）──
- *   ① LLM_API_KEY 有值 → 用自带的 OpenAI 兼容接口（DeepSeek / 通义 / 智谱 等）
+ *   ① LLM_API_KEY + LLM_BASE_URL → 用自带的 OpenAI 兼容接口（DeepSeek / 通义 等）
  *      LLM_BASE_URL 默认 https://api.deepseek.com/v1
  *      LLM_MODEL    默认 deepseek-chat
- *   ② 否则 GITHUB_TOKEN 有值 → 用 GitHub Models（免费，用仓库自带的 token）
- *      端点 https://models.github.ai/inference，模型 openai/gpt-4o-mini
- *      需在 workflow 里加 permissions: models: read
- *   ③ 都没有 → 报错退出（不会写出空文件覆盖旧数据）
+ *   ② LLM_API_KEY 单独配         → 默认走 DeepSeek（同上）
+ *   ③ ZHIPUAI_API_KEY            → 智谱 GLM-4-Flash（免费不限量，国内直连）
+ *   ④ SILICONFLOW_API_KEY        → 硅基流动（送 14 元 + 多个模型永久免费）
+ *   ⑤ DASHSCOPE_API_KEY          → 阿里云百炼通义（100 万 token 额度）
+ *   都没有 → 报错退出（不会写出空文件覆盖旧数据）
+ *
+ * ⚠️ 曾用「GitHub 自带 GITHUB_TOKEN 调 GitHub Models」当免费通道 ——
+ *    但 GitHub Models 已于 2026-07-30 彻底下线（inference API 不再可用），
+ *    那条路走不通，已全部移除。
  */
 
 'use strict';
@@ -33,35 +38,56 @@ const RAW_FILE = path.join(ROOT, 'data', 'raw-weibo.json');
 const OUT_FILE = path.join(ROOT, 'data', 'weibo-schedules.json');
 
 // ===== LLM 通道选择 =====
+// ⚠️⚠️ 2026-10-26 修正：GitHub Models 已于 2026-07-30 彻底下线
+//    （官方文档："GitHub Models has been retired... inference API... no longer available"）
+//    所以「用仓库自带的 GITHUB_TOKEN 免费调 LLM」这条路走不通了。
+//    现在的策略：只认用户自己配的 LLM_API_KEY（可选多套，按顺序探测）。
+//
+// 支持的通道（都兼容 OpenAI Chat Completions 协议），按优先级：
+//   1. LLM_API_KEY + LLM_BASE_URL（用户自定义，最灵活）
+//   2. LLM_API_KEY 单独配 → 默认走 DeepSeek（https://api.deepseek.com/v1）
+//   3. ZHIPUAI_API_KEY → 智谱 GLM-4-Flash（免费不限量，base url https://open.bigmodel.cn/api/paas/v4）
+//   4. SILICONFLOW_API_KEY → 硅基流动（免费模型，base url https://api.siliconflow.cn/v1）
+//   5. DASHSCOPE_API_KEY → 阿里云百炼通义（base url https://dashscope.aliyuncs.com/compatible-mode/v1）
 const LLM_API_KEY = (process.env.LLM_API_KEY || '').trim();
-const GITHUB_TOKEN = (process.env.GITHUB_TOKEN || '').trim();
+const ZHIPUAI_API_KEY = (process.env.ZHIPUAI_API_KEY || '').trim();
+const SILICONFLOW_API_KEY = (process.env.SILICONFLOW_API_KEY || '').trim();
+const DASHSCOPE_API_KEY = (process.env.DASHSCOPE_API_KEY || '').trim();
 
-let LLM_BASE_URL;
-let LLM_MODEL;
-let LLM_TOKEN;
+let LLM_BASE_URL = '';
+let LLM_MODEL = '';
+let LLM_TOKEN = '';
 let LLM_MAX_TOKENS = 4000;
 // 每批的字符预算（不同通道的输入上限不一样，见下方注释）
 let CHAR_BUDGET = 12000;
 
 if (LLM_API_KEY) {
+  // ① 自定义：同时给了 base url 和 model
   LLM_BASE_URL = (process.env.LLM_BASE_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
   LLM_MODEL = process.env.LLM_MODEL || 'deepseek-chat';
   LLM_TOKEN = LLM_API_KEY;
-  // DeepSeek 上下文很大，但 max_tokens 4000 已经够抽 15 条
   CHAR_BUDGET = Number(process.env.LLM_CHAR_BUDGET || 12000);
-} else if (GITHUB_TOKEN) {
-  LLM_BASE_URL = 'https://models.github.ai/inference';
-  LLM_MODEL = process.env.LLM_MODEL || 'openai/gpt-4o-mini';
-  LLM_TOKEN = GITHUB_TOKEN;
-  // ⚠️ GitHub Models 免费层每次请求输入上限 8000 token（中文约 1.5 字/token）
-  //    提示词本身占 ~1200 token，留给正文的预算必须压到 ~4500 字
-  CHAR_BUDGET = Number(process.env.LLM_CHAR_BUDGET || 4500);
+} else if (ZHIPUAI_API_KEY) {
+  // ② 智谱：GLM-4-Flash 永久免费不限量
+  LLM_BASE_URL = 'https://open.bigmodel.cn/api/paas/v4';
+  LLM_MODEL = process.env.LLM_MODEL || 'glm-4-flash';
+  LLM_TOKEN = ZHIPUAI_API_KEY;
+  CHAR_BUDGET = Number(process.env.LLM_CHAR_BUDGET || 12000);
   LLM_MAX_TOKENS = 3000;
-} else {
-  LLM_BASE_URL = '';
-  LLM_MODEL = '';
-  LLM_TOKEN = '';
-  CHAR_BUDGET = 12000;
+} else if (SILICONFLOW_API_KEY) {
+  // ③ 硅基流动：14 元赠金 + 多个永久免费模型
+  LLM_BASE_URL = 'https://api.siliconflow.cn/v1';
+  LLM_MODEL = process.env.LLM_MODEL || 'Qwen/Qwen2.5-7B-Instruct';
+  LLM_TOKEN = SILICONFLOW_API_KEY;
+  CHAR_BUDGET = Number(process.env.LLM_CHAR_BUDGET || 8000);
+  LLM_MAX_TOKENS = 3000;
+} else if (DASHSCOPE_API_KEY) {
+  // ④ 阿里云百炼：通义全系
+  LLM_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+  LLM_MODEL = process.env.LLM_MODEL || 'qwen-plus';
+  LLM_TOKEN = DASHSCOPE_API_KEY;
+  CHAR_BUDGET = Number(process.env.LLM_CHAR_BUDGET || 12000);
+  LLM_MAX_TOKENS = 3000;
 }
 
 const LLM_TIMEOUT = Number(process.env.LLM_TIMEOUT || 120000);
@@ -181,7 +207,7 @@ async function callLLM(posts) {
 
 /**
  * 分批：既受条数上限，也受字符预算约束
- * GitHub Models 免费层输入上限 8000 token，提示词占掉一大截，
+ * 免费通道单次输入上限通常 8K token，提示词就占掉一大截，
  * 正文太多会直接 400 —— 所以必须按字符数切批，不能只按条数。
  */
 function makeBatches(candidates) {
@@ -356,11 +382,25 @@ async function main() {
   }
 
   if (!LLM_TOKEN) {
-    log('❌ 没有可用的 LLM 通道。');
-    log('   请配置其中之一：');
-    log('     · Secret LLM_API_KEY（自带的 DeepSeek 等 OpenAI 兼容接口）');
-    log('     · 或让 workflow 带上 GITHUB_TOKEN（免费走 GitHub Models）');
-    log('   只想先看预筛效果？加 OFFLINE=1 跑：');
+    log('❌ 没有可用的 LLM 通道 —— 无法抽取日程。');
+    log('');
+    log('   在仓库 Settings → Secrets and variables → Actions 里加下面任意一个：');
+    log('');
+    log('   【推荐】ZHIPUAI_API_KEY —— 智谱 GLM-4-Flash 永久免费不限量');
+    log('     注册：https://open.bigmodel.cn  → API Keys → 创建 → 复制 key');
+    log('     （国内直连，不用绑卡）');
+    log('');
+    log('   或 LLM_API_KEY —— 任意 OpenAI 兼容接口');
+    log('     · DeepSeek：https://platform.deepseek.com（新用户送 10 元）');
+    log('       可选再配 LLM_BASE_URL / LLM_MODEL');
+    log('     · 硅基流动：https://cloud.siliconflow.cn（送 14 元，模型免费）');
+    log('     · 阿里云百炼：https://bailian.console.aliyun.com（通义，100 万 token）');
+    log('');
+    log('   也支持 SILICONFLOW_API_KEY / DASHSCOPE_API_KEY 这两个专用变量名。');
+    log('');
+    log('   ⚠️ 之前文档说的「GitHub Models 免费」已于 2026-07-30 下线，别再指望它。');
+    log('');
+    log('   临时想看预筛结果（不调 LLM）：');
     log('     OFFLINE=1 node scripts/extract-schedules.js');
     process.exit(1);
   }

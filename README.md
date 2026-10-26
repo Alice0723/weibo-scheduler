@@ -3,7 +3,7 @@
 从三个微博账号自动抓取动态，抽出日程条目，生成 `data/weibo-schedules.json`，
 供「Silence with You」小程序直接读取。**你的服务器全程不参与。**
 
-整条流水线**只需要 1 个 Secret**（微博 Cookie），LLM 抽取用 GitHub 自带的 token，免费。
+需要 2 个 Secret：微博 Cookie + 一个大模型 API Key（智谱 GLM-4-Flash 永久免费不限量）。
 
 ---
 
@@ -15,7 +15,7 @@ GitHub Actions（每天 10:17）
       └─ 直连 m.weibo.cn 的 container/getIndex 接口（带 Cookie）
           → data/raw-weibo.json
               └─ node scripts/extract-schedules.js
-                  └─ LLM 抽取（GitHub Models 免费 / 或你自己的 API Key）
+                  └─ LLM 抽取（智谱免费 / DeepSeek / 硅基流动 / 通义）
                       → data/weibo-schedules.json
                           └─ 自动提交回仓库
                               └─ 小程序读 raw.githubusercontent.com（5 镜像回退 + 本地缓存）
@@ -113,7 +113,10 @@ git push -u origin main
 |---|---|---|
 | `WEIBO_COOKIE` | ✅ | 第 0 步复制的 Cookie 全文 |
 | `WEIBO_RADIO_UID` | 一般不用 | @SilenceRadio0917 的数字 UID（脚本能自动解析，解析失败才需要填） |
-| `LLM_API_KEY` | 不用 | 想用自己的大模型才填（DeepSeek / 通义 / 智谱等 OpenAI 兼容接口都行）。**不填就走 GitHub Models，免费** |
+| `ZHIPUAI_API_KEY` | ✅ 建议 | **智谱 GLM-4-Flash 永久免费不限量**，国内直连不用绑卡。注册 https://open.bigmodel.cn → API Keys → 创建 |
+| `LLM_API_KEY` | 二选一 | 任意 OpenAI 兼容接口（DeepSeek / 硅基流动 / 通义…）。DeepSeek 新用户送 10 元 |
+| `SILICONFLOW_API_KEY` | 二选一 | 硅基流动，送 14 元 + 多个模型永久免费 |
+| `DASHSCOPE_API_KEY` | 二选一 | 阿里云百炼通义，100 万 token 额度 |
 
 ---
 
@@ -181,7 +184,7 @@ const WEIBO_SCHEDULE_REPO = {
 | DevTools 里找不到 Cookie | 点成了「预检」请求 | 预检（OPTIONS）不带 Cookie，改点 `getIndex` 那条 |
 | `document.cookie` 里没有 SUB | 微博把 SUB 设成 HttpOnly | 只能从 DevTools「网络 → 请求标头」复制 |
 | Actions 标红，日志说 `ok=-100` | Cookie 过期 | 同上 |
-| Actions 标红，LLM 报 401 | GitHub Models 额度用完 | 配一个 `LLM_API_KEY` Secret（DeepSeek 几分钱一次） |
+| Actions 标红，LLM 报 401 | 没配 API Key 或 Key 无效 | 配 `ZHIPUAI_API_KEY`（智谱免费）。日志里的「环境自检」会直接告诉你是哪一环 |
 | Actions 标红，LLM 报 400 token 超限 | 微博正文太长 | 调小 `scripts/extract-schedules.js` 顶部的 `LLM_CHAR_BUDGET` |
 | 日历里没有微博条目 | 仓库地址没填 / 填错 | 检查 `utils/serverApi.js` 的 `WEIBO_SCHEDULE_REPO` |
 | 日历里条目重复了 | 抽取时同一件事被抽了两次 | 脚本已按 `类型+日期+名称` 去重，若仍有重复请反馈 |
@@ -199,7 +202,7 @@ const WEIBO_SCHEDULE_REPO = {
 | `MAX_ITEMS_PER_SOURCE` | 60 | 每个账号最多保留多少条 |
 | `MAX_POSTS` | 200 | 最多送多少条进 LLM（控成本） |
 | `LLM_BATCH_SIZE` | 15 | 每次 LLM 请求塞多少条 |
-| `LLM_CHAR_BUDGET` | 12000 / 4500 | 每批正文字符预算（走 GitHub Models 时自动降到 4500） |
+| `LLM_CHAR_BUDGET` | 12000 / 8000 | 每批正文字符预算（硅基流动免费模型自动降到 8000） |
 | `WEIBO_MAX_PAGES` | 4 | 每个账号翻几页 |
 
 改长期默认值 → 编辑 `scripts/fetch-weibo.js` / `scripts/extract-schedules.js` 顶部。
