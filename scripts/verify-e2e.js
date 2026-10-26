@@ -57,7 +57,7 @@ const RAW_ITEMS = [
     source: 'wangsulong', sourceName: '汪苏泷',
     content: '转发微博 @汪苏泷Studio 汪苏泷#汪苏泷新专辑联名2# 感谢大家的支持',
     published: '2026-10-26T13:00:00.000Z', pubTs: Date.parse('2026-10-26T13:00:00Z'),
-    link: 'https://weibo.com/1004061625646585/x5'
+    link: 'https://weibo.com/1625646585/x5'
   },
   {
     source: 'radio', sourceName: 'SilenceRadio0917',

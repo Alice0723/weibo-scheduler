@@ -55,12 +55,18 @@ function hasSub(cookie) {
 
 /**
  * 读取 Cookie：先看环境变量，再看项目根目录的 cookie.txt
+ *
+ * ⚠️ WEIBO_SKIP_COOKIE_FILE=1 可禁用文件回退 ——
+ *    测试脚本要用（否则本机存在的 cookie.txt 会让「无 Cookie」用例失效）。
+ *
  * @param {string} rootDir 项目根目录
  * @returns {string}
  */
 function loadCookie(rootDir) {
   const fromEnv = (process.env.WEIBO_COOKIE || '').trim();
   if (fromEnv) return extractCookie(fromEnv);
+
+  if (process.env.WEIBO_SKIP_COOKIE_FILE === '1') return '';
 
   try {
     const p = path.join(rootDir, 'cookie.txt');

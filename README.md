@@ -226,13 +226,14 @@ const WEIBO_SCHEDULE_REPO = {
 ```
 scripts/
   fetch-weibo.js        抓取（直连 m.weibo.cn）
-  extract-schedules.js  LLM 抽取 + 校验 + 去重
+  extract-schedules.js  LLM 抽取 + 校验 + 去重（OFFLINE=1 可离线预览预筛结果）
   cookie-utils.js       Cookie 格式识别（多种复制格式都能认）
   try-local.js          本地试跑（配 GitHub 之前先验证 Cookie）
   verify-fetch.js       抓取逻辑验证
   verify-extract.js     抽取逻辑验证
   verify-llm.js         LLM 通道与分批验证
   verify-cookie.js      Cookie 格式识别验证
+  verify-real.js        真实数据抽取质量验证（需先跑一次 fetch-weibo）
   verify-e2e.js         端到端管道验证
   verify-miniprogram.js 小程序侧接入验证
 try-local.ps1           Windows 一键试跑（自动处理编码）
@@ -249,5 +250,22 @@ cookie.txt              本地放 Cookie（自动 gitignore，别提交）
 ```bash
 node scripts/verify-fetch.js && node scripts/verify-extract.js && \
 node scripts/verify-llm.js && node scripts/verify-cookie.js && \
-node scripts/verify-e2e.js && node scripts/verify-miniprogram.js
+node scripts/verify-e2e.js && node scripts/verify-miniprogram.js && \
+node scripts/verify-real.js
 ```
+
+> `verify-real.js` 需要 `data/raw-weibo.json`（先跑一次 `fetch-weibo.js`），
+> 没有真实数据时会自动跳过。
+
+---
+
+## 已实测确认的行为（2026-10-26 用真实 Cookie 跑通）
+
+| 项 | 结论 |
+|---|---|
+| @汪苏泷 | UID = **1625646585**（不是 1004061625646585，那个多了 100 前缀） |
+| @汪苏泷Studio | UID = 5523180767 ✓ |
+| @SilenceRadio0917 | **搜不到、主页 404** → 该号可能已改名或注销，默认关闭；配 `WEIBO_RADIO_UID` 可启用 |
+| 微博时间字段 | 真实格式是 `Mon Oct 26 12:10:53 +0800 2026`（英文 RFC + 时区），已按此时区解析 |
+| 抓取量 | 两个号一次能抓 20+ 条，预筛后剩 3-5 条候选 |
+| 预筛效果 | 23 条 → 5 条，现场返场微博（「谢谢青岛」「我们🙅🦑」）全部排除 |

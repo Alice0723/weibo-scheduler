@@ -28,12 +28,16 @@ const SCRIPT = path.join(REPO, 'scripts', 'fetch-weibo.js');
 
 // ===== mock 响应 =====
 // 汪苏泷Studio(5523180767) → 正常，含一条 HTML 标签正文
-// 汪苏泷(1004061625646585) → 含重复条目 + 纯空白正文，测清洗与去重
+// 汪苏泷(1625646585) → 含重复条目 + 纯空白正文，测清洗与去重
 // 未知 uid(999) → 500，测失败降级
+//
+// ⚠️ created_at 用**真实接口的格式**（英文 RFC + 时区）：
+//    "Mon Oct 26 12:10:53 +0800 2026" —— 2026-10-26 用真实数据实测过，
+//    之前用中文「10月26日 11:00」写的 mock 掩盖了时区 bug。
 const USER_INFO = {
   '5523180767': { id: 5523180767, screen_name: '汪苏泷Studio' },
-  '1004061625646585': { id: 1004061625646585, screen_name: '汪苏泷' },
-  'SilenceRadio0917': { id: 7000000001, screen_name: 'SilenceRadio0917' }
+  '1625646585': { id: 1625646585, screen_name: '汪苏泷' },
+  '7000000001': { id: 7000000001, screen_name: 'SilenceRadio0917' }
 };
 
 function mblog(text, createdAt, bid) {
@@ -43,18 +47,18 @@ function mblog(text, createdAt, bid) {
 const CARDS = {
   '5523180767': [
     mblog('<p>汪苏泷2026「明日世界」世界巡回演唱会福州站正式官宣 演出时间 2026年11月13日-2026年11月15日19:00</p>',
-      '10月26日 11:00', 'AAA111'),
-    mblog('汪苏泷#汪苏泷告五人新歌旅行的天赋# 明日12:00，即将上线', '10月25日 11:00', 'BBB222')
+      'Mon Oct 26 12:10:53 +0800 2026', 'AAA111'),
+    mblog('汪苏泷#汪苏泷告五人新歌旅行的天赋# 明日12:00，即将上线', 'Sun Oct 25 11:00:00 +0800 2026', 'BBB222')
   ],
-  '1004061625646585': [
-    mblog('第一条 &amp; 第二条 <br/>内容', '10月26日 09:00', 'CCC333'),
+  '1625646585': [
+    mblog('第一条 &amp; 第二条 <br/>内容', 'Mon Oct 26 09:00:00 +0800 2026', 'CCC333'),
     // 完全重复（同 bid 同内容）
-    mblog('第一条 &amp; 第二条 <br/>内容', '10月26日 09:00', 'CCC333'),
+    mblog('第一条 &amp; 第二条 <br/>内容', 'Mon Oct 26 09:00:00 +0800 2026', 'CCC333'),
     // 纯空白正文 → 应被丢弃
-    mblog('   ', '10月26日 08:00', 'DDD444')
+    mblog('   ', 'Mon Oct 26 08:00:00 +0800 2026', 'DDD444')
   ],
   '7000000001': [
-    mblog('今天的广州站结束了，谢谢每一个陪我从第一首唱到最后一首的你', '10月26日 09:00', 'EEE555')
+    mblog('今天的广州站结束了，谢谢每一个陪我从第一首唱到最后一首的你', 'Mon Oct 26 09:00:00 +0800 2026', 'EEE555')
   ]
 };
 
@@ -110,14 +114,24 @@ function startMock() {
   });
 }
 
+// 测试专用的输出文件 —— 不能污染 data/raw-weibo.json（verify-real.js 要读真实数据）
+const TEST_OUT = 'data/_test-raw-weibo.json';
+const TEST_OUT_FILE = path.join(REPO, TEST_OUT);
+
 async function runFetch(env, keepExisting) {
   return new Promise((resolve) => {
-    const outFile = path.join(REPO, 'data', 'raw-weibo.json');
     // keepExisting=false 时才清空（模拟首次运行）；true 时保留，用来测「失败时历史不丢」
-    if (!keepExisting) { try { fs.unlinkSync(outFile); } catch (e) {} }
+    if (!keepExisting) { try { fs.unlinkSync(TEST_OUT_FILE); } catch (e) {} }
 
     const child = spawn('node', [SCRIPT], {
-      env: { ...process.env, ...env },
+      env: {
+        ...process.env,
+        ...env,
+        WEIBO_OUT_FILE: TEST_OUT,
+        // ⚠️ 禁用 cookie.txt 回退 —— 否则本机存在 cookie.txt 时
+        //    「未配置 Cookie」的用例会读到真 Cookie 而失效
+        WEIBO_SKIP_COOKIE_FILE: '1'
+      },
       cwd: REPO
     });
     let stdout = '', stderr = '';
@@ -136,18 +150,19 @@ async function runFetch(env, keepExisting) {
     const r = await runFetch({
       WEIBO_API_BASE: base,
       WEIBO_COOKIE: 'SUB=fake; SSOLoginState=fake',
+      WEIBO_RADIO_UID: '7000000001',   // radio 号默认关闭，配了 UID 才启用
       MAX_ITEMS_PER_SOURCE: '60'
     });
     ok('脚本退出码正常（0）', r.code === 0, 'code=' + r.code + ' stderr=' + r.stderr.slice(0, 200));
 
-    const outFile = path.join(REPO, 'data', 'raw-weibo.json');
+    const outFile = TEST_OUT_FILE;
     ok('生成了 raw-weibo.json', fs.existsSync(outFile));
     if (!fs.existsSync(outFile)) { server.close(); return; }
 
     const data = JSON.parse(fs.readFileSync(outFile, 'utf8'));
     ok('输出结构正确（有 items 数组）', Array.isArray(data.items));
     ok('记录了抓取时间', !!data.updatedAt && !!data.updatedAtTs);
-    ok('记录了三个源账号', Array.isArray(data.sources) && data.sources.length === 3);
+    ok('记录了三个源账号', Array.isArray(data.sources) && data.sources.length === 3, 'len=' + (data.sources || []).length);
 
     const studio = data.items.filter(i => i.source === 'studio');
     ok('Studio 抓到 2 条', studio.length === 2, 'got ' + studio.length);
@@ -156,13 +171,29 @@ async function runFetch(env, keepExisting) {
     ok('主号抓到 1 条（完全重复的 + 空内容的都被剔掉）', wl.length === 1, 'got ' + wl.length);
 
     const radio = data.items.filter(i => i.source === 'radio');
-    ok('自定义域名被解析出数字 UID 并抓到 1 条', radio.length === 1, 'got ' + radio.length);
+    ok('配了 WEIBO_RADIO_UID 后 radio 号被启用并抓到 1 条', radio.length === 1, 'got ' + radio.length);
     ok('解析后的 UID 是数字', radio.length === 1 && /^\d+$/.test(radio[0].uid), 'uid=' + (radio[0] && radio[0].uid));
+  }
+
+  group('radio 号默认关闭');
+  {
+    // 不配 WEIBO_RADIO_UID → radio 不该被抓，但其它源正常
+    const r = await runFetch({
+      WEIBO_API_BASE: base,
+      WEIBO_COOKIE: 'SUB=fake',
+      WEIBO_RADIO_UID: ''
+    });
+    ok('退出码正常', r.code === 0, 'code=' + r.code);
+    const data = JSON.parse(fs.readFileSync(TEST_OUT_FILE, 'utf8'));
+    const radio = data.items.filter(i => i.source === 'radio');
+    ok('radio 源没有数据（默认关闭）', radio.length === 0, 'got ' + radio.length);
+    ok('其它源照常抓到', data.items.filter(i => i.source === 'studio').length === 2);
+    ok('给了「未启用」的说明', r.stdout.includes('未启用'), r.stdout.slice(0, 300));
   }
 
   group('清洗：HTML 标签与实体');
   {
-    const data = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'raw-weibo.json'), 'utf8'));
+    const data = JSON.parse(fs.readFileSync(TEST_OUT_FILE, 'utf8'));
     const wl = data.items.find(i => i.source === 'wangsulong');
     ok('HTML 标签被去掉', wl && !/<[^>]+>/.test(wl.content), 'content=' + (wl && wl.content));
     ok('&amp; 被还原成 &', wl && wl.content.includes('&'), 'content=' + (wl && wl.content));
@@ -171,18 +202,23 @@ async function runFetch(env, keepExisting) {
 
   group('元数据：链接与发布时间');
   {
-    const data = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'raw-weibo.json'), 'utf8'));
+    const data = JSON.parse(fs.readFileSync(TEST_OUT_FILE, 'utf8'));
     const item = data.items.find(i => i.source === 'studio');
     ok('保留了原微博链接', item && item.link.includes('weibo.cn/detail/'), 'link=' + (item && item.link));
     ok('发布时间转成了 ISO', item && /^\d{4}-\d{2}-\d{2}T/.test(item.published), 'published=' + (item && item.published));
     ok('时间戳可用于排序', item && item.pubTs > 0);
-    ok('发布时间落在 2026-10-25/26（月份/日期解析正确）',
-       item && /2026-10-2[56]/.test(item.published), 'published=' + (item && item.published));
+    // mock 的 created_at 是 "Mon Oct 26 12:10:53 +0800 2026"
+    // → UTC 时间戳应为 2026-10-26T04:10:53Z（+0800 时区换算）
+    ok('发布时间落在 2026-10-26（月份/日期解析正确）',
+       item && /2026-10-26T/.test(item.published), 'published=' + (item && item.published));
+    ok('⚠️ 时区换算正确（+0800 → UTC 减 8 小时）',
+       item && /2026-10-26T04:10:53/.test(item.published),
+       'published=' + (item && item.published) + '（期望 2026-10-26T04:10:53.000Z）');
   }
 
   group('排序：按时间倒序');
   {
-    const data = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'raw-weibo.json'), 'utf8'));
+    const data = JSON.parse(fs.readFileSync(TEST_OUT_FILE, 'utf8'));
     let sorted = true;
     for (let i = 1; i < data.items.length; i++) {
       if (data.items[i].pubTs > data.items[i - 1].pubTs) { sorted = false; break; }
@@ -192,7 +228,7 @@ async function runFetch(env, keepExisting) {
 
   group('失败降级：历史数据必须保留');
   {
-    const first = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'raw-weibo.json'), 'utf8'));
+    const first = JSON.parse(fs.readFileSync(TEST_OUT_FILE, 'utf8'));
     ok('第一次有数据', first.items.length > 0);
 
     // 第二次跑：mock 全部 500 → 抓不到新数据，但历史要留住
@@ -208,7 +244,7 @@ async function runFetch(env, keepExisting) {
 
     ok('全部抓取失败时退出码非 0（让 CI 报错提醒）', r2.code === 2, 'code=' + r2.code);
 
-    const after = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'raw-weibo.json'), 'utf8'));
+    const after = JSON.parse(fs.readFileSync(TEST_OUT_FILE, 'utf8'));
     ok('历史数据被完整保留（不会被清空）', after.items.length === first.items.length,
        'before=' + first.items.length + ' after=' + after.items.length);
     ok('标记了本次新抓 0 条', after.freshCount === 0, 'freshCount=' + after.freshCount);
@@ -216,7 +252,7 @@ async function runFetch(env, keepExisting) {
 
   group('去重：同一条微博只留一份');
   {
-    const data = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'raw-weibo.json'), 'utf8'));
+    const data = JSON.parse(fs.readFileSync(TEST_OUT_FILE, 'utf8'));
     const links = data.items.map(i => i.link);
     ok('没有重复链接', new Set(links).size === links.length,
        'total=' + links.length + ' unique=' + new Set(links).size);
@@ -229,7 +265,7 @@ async function runFetch(env, keepExisting) {
       WEIBO_COOKIE: ''
     });
     ok('不崩溃（只是抓不到）', r.code === 0 || r.code === 2, 'code=' + r.code);
-    ok('给了明确的提示', r.stdout.includes('WEIBO_COOKIE') || r.stdout.includes('未配置'),
+    ok('给了明确的提示', r.stdout.includes('WEIBO_COOKIE') || r.stdout.includes('没有 Cookie'),
        r.stdout.slice(0, 200));
   }
 

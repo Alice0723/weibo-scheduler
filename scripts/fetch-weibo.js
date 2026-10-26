@@ -4,9 +4,9 @@
  * 输出：data/raw-weibo.json（原始动态，供后续 LLM 抽取）
  *
  * 三个源账号：
- *   @汪苏泷            1004061625646585  本人主号
- *   @汪苏泷Studio      5523180767        工作室官方（演唱会官宣主力）
- *   @SilenceRadio0917  走自定义域名解析    官方对接号
+ *   @汪苏泷            1625646585      本人主号
+ *   @汪苏泷Studio      5523180767      工作室官方（演唱会官宣主力）
+ *   @SilenceRadio0917  走 Secret 配置    官方对接号（目前该号搜不到，默认关闭）
  *
  * ⚠️ 为什么直连而不用 RSSHub：
  *   RSSHub 的微博路由本质就是两个 m.weibo.cn JSON 请求，
@@ -24,14 +24,24 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'data');
-const OUT_FILE = path.join(OUT_DIR, 'raw-weibo.json');
+// ⚠️ 输出路径可用环境变量覆盖 —— 测试脚本用独立路径，
+//    免得 mock 数据覆盖掉真实抓取结果（verify-real.js 要读真实数据）。
+const OUT_FILE = process.env.WEIBO_OUT_FILE
+  ? path.resolve(ROOT, process.env.WEIBO_OUT_FILE)
+  : path.join(OUT_DIR, 'raw-weibo.json');
 
 // ===== 源账号 =====
 // uid 可以是数字 UID，也可以是自定义域名（会被自动解析成数字 UID）。
+//
+// ⚠️ UID 全部经实测确认（2026-10-26 用真实 Cookie 跑通）：
+//   · @汪苏泷        = 1625646585   ← 注意不是 1004061625646585（那个多了 100 前缀，是错的）
+//   · @汪苏泷Studio  = 5523180767
+//   · @SilenceRadio0917 = 搜不到、/u/ 与 /n/ 都不通 → 该号可能已改名或注销
+//     → 默认关闭，需要时用环境变量 WEIBO_RADIO_UID 指定新的数字 UID 打开
 const SOURCES = [
-  { key: 'wangsulong', name: '汪苏泷', uid: '1004061625646585' },
+  { key: 'wangsulong', name: '汪苏泷', uid: '1625646585' },
   { key: 'studio', name: '汪苏泷Studio', uid: '5523180767' },
-  { key: 'radio', name: 'SilenceRadio0917', uid: 'SilenceRadio0917' }
+  { key: 'radio', name: 'SilenceRadio0917', uid: 'SilenceRadio0917', enabled: false }
 ];
 
 // 环境变量可覆盖（用于换号调试）
@@ -122,8 +132,9 @@ async function apiGet(params, refererUid) {
         throw lastErr;
       }
       if (json && json.ok === 0) {
-        // 没有内容（比如 uid 写错）
-        lastErr = new Error('微博返回 ok=0 —— 没有取到内容，可能是 uid 有误');
+        // 没有内容：可能是 uid 有误、该号已注销、或这个 containerid 没东西
+        // 这不算致命错误 —— 交给上层按「这个源没数据」处理
+        lastErr = new Error('微博返回 ok=0 —— 没有内容，可能是 uid 有误或该账号不可用');
         throw lastErr;
       }
 
@@ -156,26 +167,50 @@ function stripHtml(html) {
 }
 
 /**
- * 把微博的 created_at（形如 "10月26日 12:30" / "今天 12:30" / "刚刚"）转成时间戳
- * 微博只给「月日 时分」，年份要靠推断：超过当前月份的一律认为是去年。
+ * 把微博的 created_at 转成时间戳（毫秒）
+ *
+ * ⚠️ 真实接口返回的格式是英文 RFC 风格，且带 +0800 时区：
+ *     "Thu Mar 26 11:00:04 +0800 2026"
+ *     "Mon Oct 26 03:00:46 +0800 2026"
+ *   → 必须让 Date 按这个时区解析，否则会差 8 小时（直接影响 LLM 判断「明日12:00」是哪天）。
+ *
+ * 兼容的其它格式（不同接口/不同版本微博会出现）：
+ *     "10月26日 11:00"  "10-26 11:00"  "今天 12:30"  "昨天 12:30"  "刚刚"  "5分钟前"
  */
 function parseWeiboTime(createdAt) {
   const raw = String(createdAt || '').trim();
   if (!raw) return 0;
 
-  // 已经是完整 ISO / 带年份
-  const isoMatch = raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})/);
-  if (isoMatch) {
+  // ① 标准英文格式（含时区）：Thu Mar 26 11:00:04 +0800 2026
+  //    Date 能直接解析，但必须确认时区被识别 —— 手工拆更保险
+  const en = raw.match(
+    /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\w{3})\s+(\d{1,2})\s+(\d{1,2}):(\d{2}):(\d{2})\s+([+-]\d{4})\s+(\d{4})$/
+  );
+  if (en) {
+    const MONTHS = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+    const mo = MONTHS[en[1]];
+    if (mo !== undefined) {
+      const [, , day, hh, mm, ss, tz, year] = en;
+      const off = parseInt(tz.slice(1, 3), 10) * 60 + parseInt(tz.slice(3, 5), 10);
+      const sign = tz[0] === '-' ? -1 : 1;
+      // 先按 UTC 构造，再减去偏移 → 得到真实 UTC 毫秒
+      const utc = Date.UTC(Number(year), mo, Number(day), Number(hh), Number(mm), Number(ss));
+      return utc - sign * off * 60 * 1000;
+    }
+  }
+
+  // ② 已经是完整 ISO
+  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (iso) {
     return new Date(
-      Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]),
-      Number(isoMatch[4]), Number(isoMatch[5])
+      Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]),
+      Number(iso[4]), Number(iso[5]), Number(iso[6] || 0)
     ).getTime();
   }
 
+  // ③ 中文格式：10月26日 11:00 / 10-26 11:00
   const now = new Date();
   const year = now.getFullYear();
-
-  // 形如 "10月26日 12:30" 或 "10-26 12:30"
   let m = raw.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日?(?:\s*(\d{1,2}):(\d{2}))?/);
   if (!m) m = raw.match(/(\d{1,2})-(\d{1,2})(?:\s*(\d{1,2}):(\d{2}))?/);
   if (m) {
@@ -189,7 +224,7 @@ function parseWeiboTime(createdAt) {
     return ts;
   }
 
-  // "今天 12:30" / "昨天 12:30" / "刚刚" / "5分钟前"
+  // ④ 相对表述
   const hm = raw.match(/(\d{1,2}):(\d{2})/);
   if (/刚刚/.test(raw)) return Date.now();
   if (/分钟前/.test(raw)) {
@@ -206,6 +241,10 @@ function parseWeiboTime(createdAt) {
   if (/昨天/.test(raw) && hm) {
     return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, Number(hm[1]), Number(hm[2])).getTime();
   }
+
+  // ⑤ 兜底：交给 Date 自己试（能解析就用）
+  const t = Date.parse(raw);
+  if (Number.isFinite(t) && t > 0) return t;
 
   return 0;
 }
@@ -347,9 +386,16 @@ async function main() {
     log('   ⚠️ 别点成「预检」请求（OPTIONS），预检不带 Cookie。');
   }
 
-  const sources = SOURCES.map((s) =>
-    (s.key === 'radio' && RADIO_UID) ? { ...s, uid: RADIO_UID } : s
-  );
+  // radio 账号：默认关闭（实测该号已搜不到 / 访问不通）。
+  // 配了 WEIBO_RADIO_UID 才启用 —— 换了新 UID 或恢复了就能直接用。
+  const sources = SOURCES
+    .filter((s) => (s.key === 'radio' ? !!RADIO_UID : true))
+    .map((s) => (s.key === 'radio' && RADIO_UID) ? { ...s, uid: RADIO_UID } : s);
+
+  if (!RADIO_UID) {
+    log('ℹ️ SilenceRadio0917 未启用（该号目前搜不到、主页也不通）。');
+    log('   如果它恢复了，把新的数字 UID 配成 WEIBO_RADIO_UID 即可自动启用。');
+  }
 
   const all = [];
   for (const s of sources) {

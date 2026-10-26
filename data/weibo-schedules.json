@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-10-26T07:29:06.802Z",
-  "updatedAtTs": 1792999746802,
+  "updatedAt": "2026-10-26T07:55:31.603Z",
+  "updatedAtTs": 1793001331603,
   "count": 1,
   "rawUpdatedAt": "2026-10-26T00:00:00.000Z",
   "failedBatches": 0,
@@ -17,7 +17,7 @@
       "sourceUrl": "",
       "sourceName": "",
       "sourcePubTs": 0,
-      "extractedAt": 1792999746801
+      "extractedAt": 1793001331602
     }
   ]
 }

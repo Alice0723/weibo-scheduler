@@ -274,36 +274,94 @@ function validateItem(item, opts) {
   };
 }
 
-/** 用正文关键词做二次过滤：明显不是日程的一律丢 */
-const NON_SCHEDULE_HINTS = [
+/**
+ * 用正文关键词做二次过滤：明显不是日程的一律丢
+ *
+ * ⚠️ 关键设计（2026-10-26 真实数据驱动）：
+ *   噪音词**不能**一刀切。真日程也可能带「谢谢」「结束」这类词
+ *   （如「谢谢大家，11月13日见」）。所以规则是：
+ *     · 有**明确日期**的 → 即使含噪音词也保留，交给 LLM 判断
+ *     · 没明确日期的 → 含噪音词就丢掉（多半是现场返场/闲聊/回顾）
+ */
+const NOISE_SOFT = [
   '抽奖', '转发', '点赞', '评论区', '打卡', '应援', '生日会', '直播回放',
   '销量', '打榜', '冲榜', '公益', '代言', '广告', '课程', '直播答题',
   '抢先听', '回顾', '盘点', '合辑', '重温', '答谢', '高光', '混剪'
 ];
-// 出现这些词不代表一定是日程，只在「没有日期线索」时用来兜底剔除
+// 演出现场的返场/回顾类词 —— 这些几乎一定在讲「已经演完了」
+const NOISE_RECAP = [
+  '谢谢青岛', '谢谢深圳', '谢谢上海', '谢谢广州', '谢谢北京', '谢谢成都',
+  '明天也见', '我们🙅', '我们🦐', '我们🦀', '后会有期', '散场', '返场',
+  '圆满结束', '完美落幕', '意犹未尽', '今日圆满', '三场都见'
+];
+
+// 明确日期线索：11月13日 / 11-13 / 11/13 / 2026年 / 11月13号
+const STRONG_DATE = /\d{1,2}\s*月\s*\d{1,2}\s*[日号]|\d{4}\s*年|\d{1,2}\/\d{1,2}/;
+// 动作线索：这些词本身就说明「有个活动」
+const ACTION = /开售|开票|预售|上线|发行|首播|放映|演出|官宣|演唱会|快闪|巡演|签售|见面会/;
+// 未来词：说明这条微博在讲「还没发生的事」
+const FUTURE = /即将|将于|即将于|定档|官宣|正式|开启|启航|敬请期待|预售|开票|开售|上线|发行|首播|首演|首场|倒计时|敬请|即将上线/;
+// 过去/现场词：说明这条微博在讲「已经发生的事」
+const PAST = /昨夜|今晚|今天|今早|刚刚|三天|第二天|圆满|精彩继续|意犹未尽|返场|散场|告别|落幕|收官|结束了|已结束/;
+
 function looksLikeSchedule(text) {
-  const t = String(text || '');
+  const t = String(text || '').trim();
   if (!t) return false;
 
-  // ⚠️ 噪音词优先判断（2026-10-26 修正）：
-  // 「直播回放已上线，点击观看…」含「上线/放映」这类动作词，会被误判成日程，
-  // 但它讲的是已经发生的事。必须先排噪音，再找日期线索。
-  if (NON_SCHEDULE_HINTS.some((h) => t.includes(h))) return false;
+  const hasStrongDate = STRONG_DATE.test(t);
+  const hasAction = ACTION.test(t);
+  const hasFuture = FUTURE.test(t);
+  const hasPast = PAST.test(t);
 
-  // 日期/动作线索：明确说了「什么时候发生什么」
-  const hasDateClue = /\d{1,2}\s*月\s*\d{1,2}\s*日|\d{4}\s*年|\d{1,2}\/\d{1,2}|开售|开票|预售|上线|发行|首播|放映|演出|官宣/.test(t);
-  return hasDateClue;
+  // ① 返场/回顾类：几乎一定是「已经发生的事」，直接丢
+  if (NOISE_RECAP.some((h) => t.includes(h))) return false;
+
+  // ② 通用噪音词 + 没有明确日期 → 丢
+  //    （有明确日期的放行，交给 LLM 判断，避免误杀「谢谢大家，11月13日见」）
+  if (NOISE_SOFT.some((h) => t.includes(h)) && !hasStrongDate) return false;
+
+  // ③ 有明确日期 或 有未来词 → 候选
+  if (hasStrongDate || hasFuture) return true;
+
+  // ④ 只有「演唱会」这类活动词，但既没日期也没未来词，还带现场/过去词
+  //    → 大概率是演出现场的返场微博（「连续三天…」「浪漫不止此刻…」）
+  //    丢掉，避免污染日历
+  if (hasAction && hasPast) return false;
+
+  // ⑤ 剩下的：有活动词但无线索 → 留给 LLM 判断（可能是官宣但没写日期）
+  return hasAction;
 }
 
 // ============================================================
 // 主流程
 // ============================================================
 async function main() {
+  // ===== 离线模式（本地预览用，不调 LLM）=====
+  // 用途：还没配 LLM Key 时，先看看「哪些微博进了候选」「日期线索抓得对不对」
+  if (process.env.OFFLINE === '1') {
+    log('🔍 离线模式：只看预筛结果，不调 LLM');
+    const raw = JSON.parse(fs.readFileSync(RAW_FILE, 'utf8'));
+    const all = Array.isArray(raw.items) ? raw.items : [];
+    const candidates = all
+      .filter((it) => it && it.content && it.content.length > 10)
+      .filter((it) => looksLikeSchedule(it.content))
+      .slice(0, MAX_POSTS);
+    log(`共 ${all.length} 条 → 预筛后 ${candidates.length} 条候选\n`);
+    candidates.forEach((it, i) => {
+      const d = it.published ? it.published.replace('T', ' ').slice(0, 16) : '未知时间';
+      log(`[${i + 1}] ${it.sourceName} · 发布于 ${d}`);
+      log(`    ${String(it.content).slice(0, 120)}`);
+    });
+    return;
+  }
+
   if (!LLM_TOKEN) {
     log('❌ 没有可用的 LLM 通道。');
     log('   请配置其中之一：');
     log('     · Secret LLM_API_KEY（自带的 DeepSeek 等 OpenAI 兼容接口）');
     log('     · 或让 workflow 带上 GITHUB_TOKEN（免费走 GitHub Models）');
+    log('   只想先看预筛效果？加 OFFLINE=1 跑：');
+    log('     OFFLINE=1 node scripts/extract-schedules.js');
     process.exit(1);
   }
   log(`LLM 通道：${LLM_BASE_URL} / ${LLM_MODEL}`);
