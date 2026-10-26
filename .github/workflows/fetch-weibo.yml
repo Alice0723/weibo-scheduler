@@ -43,6 +43,39 @@ jobs:
         with:
           node-version: '20'
 
+      # ⚠️ 诊断步骤：把「到底是哪一环出问题」直接说清楚，
+      #    免得只能看到一句 exit code 2 干瞪眼。
+      #    只输出长度和是否含 SUB，绝不输出 Cookie 内容。
+      - name: 环境自检
+        env:
+          WEIBO_COOKIE: ${{ secrets.WEIBO_COOKIE }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: node -e "
+          const c = process.env.WEIBO_COOKIE || '';
+          console.log('--- 环境自检 ---');
+          console.log('WEIBO_COOKIE 长度:', c.length);
+          console.log('是否包含 SUB=  :', /(^|;\s*)SUB=/.test(c) ? '是' : '否  ← 问题在这');
+          console.log('是否包含 432  :', c.includes('432') ? '是' : '否');
+          console.log('GITHUB_TOKEN  :', process.env.GITHUB_TOKEN ? '有（可走 GitHub Models）' : '无');
+          console.log('LLM_API_KEY   :', process.env.LLM_API_KEY ? '有' : '无（将走 GitHub Models）');
+          if (!c) {
+            console.log('');
+            console.log('❌ Secret 没读到。检查：');
+            console.log('   1. 名称必须是 WEIBO_COOKIE（全大写，下划线分隔）');
+            console.log('   2. 要配在 Repository secrets，不是 Environment secrets');
+            console.log('   3. 配好 Secret 后必须重新触发一次 workflow ——');
+            console.log('      已经在跑的 run 拿不到新加的 Secret');
+            process.exit(1);
+          }
+          if (!/(^|;\s*)SUB=/.test(c)) {
+            console.log('');
+            console.log('❌ Cookie 里没有 SUB= —— 微博会返回 432。');
+            process.exit(1);
+          }
+          console.log('✓ Cookie 就绪');
+        "
+
       - name: 抓取微博动态
         env:
           WEIBO_COOKIE: ${{ secrets.WEIBO_COOKIE }}
