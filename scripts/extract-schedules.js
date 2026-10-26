@@ -130,16 +130,23 @@ const SYSTEM_PROMPT = [
   '1. **只抽真正的「日程」**。以下一律不要抽：日常闲聊、粉丝互动、转发抽奖、往年旧活动的复盘、歌词感慨、图片分享、专辑销量战报、公益广告、代言广告、已经过去很久的活动回顾。',
   '2. **必须是未来或有明确日期的事件**。如果一条微博讲的是过去的活动（今年年初、上个月、去年），不要抽。',
   '3. **日期必须是绝对日期**。若原文只有相对表述（明日、后天、今晚、下周五），按该微博的 published 时间换算成 YYYY-MM-DD。',
-  '4. **演唱会多场连演**（如「11月13日-15日」「13/14/15 三场」）：输出成 date/endDate 区间，type=concert；**不要拆成三条**。同时如果提到了开票/预售时间，**另外**输出一条 type=ticket。',
-  '5. **一个事件一条记录**。name 用简洁中文短语（如「明日世界巡回演唱会 福州站」「《联名2》新专辑发行」），不要把整段原文塞进 name。',
-  '6. **不要编造**。原文没写的信息留空，不要推测城市、场馆、票务平台。',
-  '7. 如果原文有明确的场馆/城市，放进 location 字段；没有就留空字符串。',
-  '8. 如果原文提到具体歌曲名，放进 songs 字段（数组）；没有就空数组。',
-  '9. type 拿不准时，选语义最接近的一个，不要留空。',
+  '4. **⚠️ 缺年份的日期必须按「发布时间的年份」来推断，不要凭感觉猜年份。**',
+  '   原文写「11月1日」而没写年份时，年份就取**该条微博 published 的年份**。',
+  '   例：微博发布于 2026-10-20，内容写「11月1日，中国澳门见」→ 输出 2026-11-01（**不是** 2025-11-01）。',
+  '   同理「12月31日」「3月15日」等一律如此。',
+  '   **唯一例外**：如果原文明确说了是去年的事（如「去年11月1日」），才用前一年。',
+  '5. **演唱会多场连演**（如「11月13日-15日」「13/14/15 三场」）：输出成 date/endDate 区间，type=concert；**不要拆成三条**。同时如果提到了开票/预售时间，**另外**输出一条 type=ticket。',
+  '6. **一个事件一条记录**。name 用简洁中文短语（如「明日世界巡回演唱会 福州站」「《联名2》新专辑发行」），不要把整段原文塞进 name。',
+  '7. **不要编造**。原文没写的信息留空，不要推测城市、场馆、票务平台。',
+  '8. 如果原文有明确的场馆/城市，放进 location 字段；没有就留空字符串。',
+  '9. 如果原文提到具体歌曲名，放进 songs 字段（数组）；没有就空数组。',
+  '10. type 拿不准时，选语义最接近的一个，不要留空。',
   '',
   '输出格式（严格 JSON，不要 markdown 代码块，不要任何解释文字）：',
-  '{"items":[{"date":"YYYY-MM-DD","endDate":"","name":"事件名","type":"concert","location":"","songs":[],"confidence":0.9,"reason":"一句话说明依据"}]}',
+  '{"items":[{"index":1,"date":"YYYY-MM-DD","endDate":"","name":"事件名","type":"concert","location":"","songs":[],"confidence":0.9,"reason":"一句话说明依据"}]}',
   '',
+  'index 填这条日程来自第几条微博（就是下面 [1] [2] [3] 的编号，从 1 开始）。',
+  '一条微博里有多件事时，每个事件一条记录，但 index 都填同一条微博的编号。',
   '若无任何可抽取内容，输出 {"items":[]}。',
   'confidence 取 0~1 的小数，表示你对这条抽取的把握。',
   'reason 用中文简述你从原文里看到了什么日期依据。',
@@ -248,17 +255,90 @@ function dateToTs(s) {
   return new Date(y, m - 1, d).getTime();
 }
 
+/**
+ * ⚠️ 修正 LLM 猜错年份的情况（2026-10-26 真实运行暴露）
+ *
+ * 场景：微博发布于 2026-10-20，正文写「11月1日，中国澳门见」（**没写年份**）
+ *   → LLM 抽成了 2025-11-01（凭直觉猜了个"常见年份"）
+ *   → 校验层判定为「过去的日期」→ 丢弃 → **真日程就这么漏了**
+ *
+ * 修法：如果正文里明确写了月日，而 LLM 抽出的**月日与原文一致**、
+ *       但**年份与发布时间差得离谱**（差 1 年以上且原文本没提年份），
+ *       就把年份改回发布时间的年份。
+ *       判据用「原文中是否出现年份字样」——出现了就不改（尊重原文）。
+ */
+function fixGuessedYear(dateStr, endDateStr, content, pubTs) {
+  if (!pubTs || !dateStr) return { date: dateStr, endDate: endDateStr, fixed: false };
+
+  const text = String(content || '');
+
+  // 原文里出现了 4 位年份 → 尊重原文，不动
+  if (/\d{4}\s*年/.test(text) || /\b(19|20)\d{2}\b/.test(text)) {
+    return { date: dateStr, endDate: endDateStr, fixed: false };
+  }
+
+  // 原文里有没有「月日」？没有就别乱改（比如「明日12:00」这种相对表述）
+  const md = text.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]?/);
+  if (!md) return { date: dateStr, endDate: endDateStr, fixed: false };
+
+  const srcMonth = Number(md[1]);
+  const srcDay = Number(md[2]);
+
+  const pub = new Date(pubTs);
+  const pubYear = pub.getFullYear();
+
+  const parts = dateStr.split('-').map(Number);
+  if (parts.length !== 3) return { date: dateStr, endDate: endDateStr, fixed: false };
+  const [ly, lm, ld] = parts;
+
+  // 月日对不上原文 → 不是同一天，别乱改
+  if (lm !== srcMonth || ld !== srcDay) {
+    return { date: dateStr, endDate: endDateStr, fixed: false };
+  }
+
+  // 年份一致 → 没问题
+  if (ly === pubYear) return { date: dateStr, endDate: endDateStr, fixed: false };
+
+  // 年份差了 1 年以上 → 判定为猜错，改成发布时间的年份
+  const corrected = `${pubYear}-${String(lm).padStart(2, '0')}-${String(ld).padStart(2, '0')}`;
+  if (!isValidDateStr(corrected)) {
+    return { date: dateStr, endDate: endDateStr, fixed: false };
+  }
+
+  // endDate 同样修正（多日区间）
+  let correctedEnd = endDateStr;
+  if (endDateStr) {
+    const ep = endDateStr.split('-').map(Number);
+    if (ep.length === 3) {
+      const cEnd = `${pubYear}-${String(ep[1]).padStart(2, '0')}-${String(ep[2]).padStart(2, '0')}`;
+      if (isValidDateStr(cEnd)) correctedEnd = cEnd;
+    }
+  }
+
+  return { date: corrected, endDate: correctedEnd, fixed: true };
+}
+
 function validateItem(item, opts) {
   const now = opts.now;
   const maxFutureDays = opts.maxFutureDays;
 
   if (!item || typeof item !== 'object') return null;
 
-  const date = String(item.date || '').trim();
+  let date = String(item.date || '').trim();
   if (!isValidDateStr(date)) return null;
 
-  const endDate = String(item.endDate || '').trim();
+  let endDate = String(item.endDate || '').trim();
   if (endDate && !isValidDateStr(endDate)) return null;
+
+  // ⚠️ 先修正 LLM 猜错的年份，再做「过去/未来」判定 ——
+  //    顺序反了的话，猜错年份的真日程会在修正前就被丢掉。
+  if (opts.content && opts.sourcePubTs) {
+    const fixed = fixGuessedYear(date, endDate, opts.content, opts.sourcePubTs);
+    if (fixed.fixed) {
+      date = fixed.date;
+      endDate = fixed.endDate;
+    }
+  }
 
   const startTs = dateToTs(date);
   const endTs = endDate ? dateToTs(endDate) : startTs;
@@ -446,10 +526,21 @@ async function main() {
     try {
       const items = await callLLM(batch);
       let kept = 0;
-      items.forEach((it) => {
+      items.forEach((it, idx) => {
+        // 用 index 找回原文（LLM 可能会漏填 index → 退回到按顺序对应）
+        let src = batch[idx];
+        const idxNum = Number(it && it.index);
+        if (Number.isFinite(idxNum) && idxNum >= 1 && idxNum <= batch.length) {
+          src = batch[idxNum - 1];
+        }
+
         const v = validateItem(it, {
           now: now.getTime(),
-          maxFutureDays
+          maxFutureDays,
+          content: src ? src.content : '',
+          sourcePubTs: src ? (src.pubTs || 0) : 0,
+          sourceUrl: src ? (src.link || '') : '',
+          sourceName: src ? (src.sourceName || '') : ''
         });
         if (v) { results.push(v); kept++; }
       });

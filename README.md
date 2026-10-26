@@ -238,6 +238,7 @@ scripts/
   verify-cookie.js      Cookie 格式识别验证
   verify-real.js        真实数据抽取质量验证（需先跑一次 fetch-weibo）
   verify-workflow.js    workflow YAML 校验（改完 workflow 必跑！）
+  verify-year.js        年份推断修正验证（LLM 猜错年份的兜底）
   self-check.js         环境自检（workflow 第一个步骤用）
   verify-e2e.js         端到端管道验证
   verify-miniprogram.js 小程序侧接入验证
