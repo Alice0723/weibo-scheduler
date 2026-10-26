@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-10-26T08:58:25.481Z",
-  "updatedAtTs": 1793005105481,
+  "updatedAt": "2026-10-26T09:40:57.376Z",
+  "updatedAtTs": 1793007657376,
   "count": 1,
-  "rawUpdatedAt": "2026-10-26T08:58:20.956Z",
+  "rawUpdatedAt": "2026-10-26T09:40:51.811Z",
   "failedBatches": 0,
   "items": [
     {
@@ -16,10 +16,10 @@
       ],
       "confidence": 1,
       "reason": "原文明确提到明日12:00上线",
-      "sourceUrl": "",
-      "sourceName": "",
-      "sourcePubTs": 0,
-      "extractedAt": 1793005105480
+      "sourceUrl": "https://m.weibo.cn/detail/Ror8lczMs",
+      "sourceName": "汪苏泷Studio",
+      "sourcePubTs": 1792987853000,
+      "extractedAt": 1793007657376
     }
   ]
 }
