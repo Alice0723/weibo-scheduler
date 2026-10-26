@@ -1,3 +1,6 @@
 node_modules/
 data/raw-weibo.json
 *.log
+
+# 本地放微博 Cookie 的文件（绝不能提交到公开仓库）
+cookie.txt

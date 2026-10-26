@@ -26,7 +26,25 @@ const { spawn } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const RAW_FILE = path.join(ROOT, 'data', 'raw-weibo.json');
 
-const COOKIE = (process.env.WEIBO_COOKIE || '').trim();
+const COOKIE = (process.env.WEIBO_COOKIE || '').trim() || readCookieFile();
+
+/**
+ * Cookie 也可以放在仓库根目录的 cookie.txt 里（已被 .gitignore 排除）。
+ *
+ * 为什么不只靠环境变量：
+ *   · PowerShell 里 `FOO=bar node x.js` 这种写法**不生效**（那是 bash 语法）
+ *     → 必须写成 $env:FOO="bar"; node x.js，用错会直接白跑一趟
+ *   · 把 Cookie 粘进命令行会留在 PowerShell 历史记录里 → 落到文件更安全
+ */
+function readCookieFile() {
+  try {
+    const p = path.join(ROOT, 'cookie.txt');
+    if (fs.existsSync(p)) {
+      return fs.readFileSync(p, 'utf8').trim();
+    }
+  } catch (e) { /* ignore */ }
+  return '';
+}
 
 function line(s) { console.log(s); }
 
@@ -38,16 +56,31 @@ async function main() {
   // ===== 1. Cookie 检查 =====
   line('\n[1/3] 检查 Cookie');
   if (!COOKIE) {
-    line('  ✗ 没有 WEIBO_COOKIE 环境变量');
+    line('  ✗ 没有找到 Cookie');
     line('');
-    line('  怎么拿 Cookie：');
-    line('    1. 浏览器登录微博（用小号也行，能看到这三个号的动态就够）');
+    line('  【怎么拿 Cookie】');
+    line('    1. 浏览器登录微博（小号也行，能看到这三个号的动态就够）');
     line('    2. 打开 https://m.weibo.cn/u/5523180767');
-    line('    3. 按 F12 → Network 面板 → 点任意一个请求 → Request Headers');
-    line('    4. 复制 Cookie 那一整行');
+    line('    3. F12 → Network 面板 → 点任意一个请求 → Request Headers');
+    line('    4. 复制 Cookie 那一整行（形如 SUB=xxx; SSOLoginState=xxx; ...）');
     line('');
-    line('  然后运行（把引号里的内容换成你的 Cookie）：');
-    line('    WEIBO_COOKIE="SUB=xxx; SSOLoginState=xxx; ..." node scripts/try-local.js');
+    line('  【放哪里 —— 二选一】');
+    line('');
+    line('  方式 A（推荐，PowerShell / Git Bash 都能用）：');
+    line('    把 Cookie 存成这个文件：');
+    line('      ' + path.join(ROOT, 'cookie.txt'));
+    line('    然后直接运行：');
+    line('      node scripts\\try-local.js');
+    line('    （cookie.txt 已在 .gitignore 里，不会被提交上去）');
+    line('');
+    line('  方式 B（临时用一下）：');
+    line('    PowerShell：');
+    line('      $env:WEIBO_COOKIE="SUB=xxx; ..."');
+    line('      node scripts\\try-local.js');
+    line('    Git Bash / CMD：');
+    line('      WEIBO_COOKIE="SUB=xxx; ..." node scripts/try-local.js');
+    line('');
+    line('  ⚠️ PowerShell 里不能写 WEIBO_COOKIE="..." node xxx.js（那是 bash 语法，不生效）');
     process.exit(1);
   }
 
@@ -72,6 +105,10 @@ async function main() {
     cwd: ROOT
   });
   let stdout = '', stderr = '';
+  // ⚠️ 必须显式指定 utf8：Windows PowerShell 5.1 默认按 GBK 解码子进程输出，
+  // 不指定的话中文日志全是乱码（父进程自己 console.log 的部分不受影响）。
+  child.stdout.setEncoding('utf8');
+  child.stderr.setEncoding('utf8');
   child.stdout.on('data', d => { stdout += d.toString(); process.stdout.write(d); });
   child.stderr.on('data', d => { stderr += d.toString(); });
 
