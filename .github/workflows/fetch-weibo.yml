@@ -1,0 +1,73 @@
+name: 微博日程抓取
+
+# 每天拉一次三个微博账号的动态，抽出日程写进 data/weibo-schedules.json。
+# 小程序直接读这个 JSON（raw.githubusercontent.com），服务器零参与。
+#
+# 整条流水线只需要 1 个 Secret：WEIBO_COOKIE。
+# LLM 抽取用仓库自带的 GITHUB_TOKEN 走 GitHub Models（免费），不用额外配 API Key。
+#
+# 如果你不想用 GitHub Models，可以自己加一个 Secret 叫 LLM_API_KEY，
+# 脚本会自动优先用它（DeepSeek / 通义 / 智谱 等 OpenAI 兼容接口都行）。
+
+on:
+  schedule:
+    # 每天 10:17（避开整点，减少 Actions 排队）
+    - cron: '17 10 * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: '每个账号最多抓多少条'
+        required: false
+        default: '60'
+
+permissions:
+  contents: write   # 要把抓到的数据提交回仓库
+  models: read       # 用 GitHub Models 免费做 LLM 抽取
+
+concurrency:
+  group: weibo-fetch
+  cancel-in-progress: true
+
+jobs:
+  fetch:
+    name: 抓取并抽取
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 抓取微博动态
+        env:
+          WEIBO_COOKIE: ${{ secrets.WEIBO_COOKIE }}
+          WEIBO_RADIO_UID: ${{ secrets.WEIBO_RADIO_UID }}
+          MAX_ITEMS_PER_SOURCE: ${{ github.event.inputs.limit || '60' }}
+        run: node scripts/fetch-weibo.js
+
+      - name: LLM 抽取日程
+        env:
+          # 自带的 LLM_API_KEY 优先；没有就自动走 GitHub Models
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/extract-schedules.js
+
+      - name: 提交结果
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore: 更新微博日程 (${{ github.run_number }})'
+          file_pattern: 'data/*.json'
+
+      - name: 失败提示
+        if: failure()
+        run: |
+          echo "::error::微博日程抓取失败。最常见的原因是 WEIBO_COOKIE 过期了。"
+          echo "::error::去仓库 Settings → Secrets and variables → Actions 重新粘贴一份微博 Cookie 即可。"
+          echo "::error::复制的 Cookie 必须包含 SUB= 这一段，否则微博一律返回 432。"
