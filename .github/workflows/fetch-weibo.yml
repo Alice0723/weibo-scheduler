@@ -48,6 +48,10 @@ jobs:
       # ⚠️ 诊断步骤：把「到底是哪一环出问题」直接说清楚，
       #    免得只能看到一句 exit code 2 干瞪眼。
       #    只输出长度和是否含 SUB，绝不输出 Cookie 内容。
+      #    ⚠️ 逻辑放在 scripts/self-check.js 里，不内联在 YAML ——
+      #    内联 JS 要同时躲 YAML 引号 + JS 引号 + 冒号，
+      #    之前内联版本就因单引号串里带冒号导致整个 workflow 解析失败
+      #    （GitHub 的表现是 Actions 里完全看不到这个 workflow）。
       - name: 环境自检
         env:
           WEIBO_COOKIE: ${{ secrets.WEIBO_COOKIE }}
@@ -55,37 +59,7 @@ jobs:
           ZHIPUAI_API_KEY: ${{ secrets.ZHIPUAI_API_KEY }}
           SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
           DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
-        run: node -e "
-          const c = process.env.WEIBO_COOKIE || '';
-          console.log('--- 环境自检 ---');
-          console.log('WEIBO_COOKIE 长度:', c.length);
-          console.log('是否包含 SUB=  :', /(^|;\s*)SUB=/.test(c) ? '是' : '否  ← 问题在这');
-          const keys = ['LLM_API_KEY','ZHIPUAI_API_KEY','SILICONFLOW_API_KEY','DASHSCOPE_API_KEY'];
-          const found = keys.filter(k => process.env[k]);
-          console.log('可用的 LLM Key :', found.length ? found.join(', ') : '无  ← 问题在这');
-          if (!c) {
-            console.log('');
-            console.log('❌ Secret 没读到。检查：');
-            console.log('   1. 名称必须是 WEIBO_COOKIE（全大写，下划线分隔）');
-            console.log('   2. 要配在 Repository secrets，不是 Environment secrets');
-            console.log('   3. 配好 Secret 后必须重新触发一次 workflow ——');
-            console.log('      已经在跑的 run 拿不到新加的 Secret');
-            process.exit(1);
-          }
-          if (!/(^|;\s*)SUB=/.test(c)) {
-            console.log('');
-            console.log('❌ Cookie 里没有 SUB= —— 微博会返回 432。');
-            process.exit(1);
-          }
-          if (!found.length) {
-            console.log('');
-            console.log('❌ 没配 LLM Key，无法抽取日程。');
-            console.log('   推荐 ZHIPUAI_API_KEY（智谱 GLM-4-Flash 永久免费）：');
-            console.log('   https://open.bigmodel.cn → API Keys → 创建 → 复制 key');
-            process.exit(1);
-          }
-          console.log('✓ 环境就绪');
-        "
+        run: node scripts/self-check.js
 
       - name: 抓取微博动态
         env:

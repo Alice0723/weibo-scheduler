@@ -237,6 +237,8 @@ scripts/
   verify-llm.js         LLM 通道与分批验证
   verify-cookie.js      Cookie 格式识别验证
   verify-real.js        真实数据抽取质量验证（需先跑一次 fetch-weibo）
+  verify-workflow.js    workflow YAML 校验（改完 workflow 必跑！）
+  self-check.js         环境自检（workflow 第一个步骤用）
   verify-e2e.js         端到端管道验证
   verify-miniprogram.js 小程序侧接入验证
 try-local.ps1           Windows 一键试跑（自动处理编码）
@@ -259,6 +261,11 @@ node scripts/verify-real.js
 
 > `verify-real.js` 需要 `data/raw-weibo.json`（先跑一次 `fetch-weibo.js`），
 > 没有真实数据时会自动跳过。
+>
+> ⚠️ **`verify-workflow.js` 改完 workflow 一定要跑** ——
+> GitHub 解析 workflow YAML 失败时**不会给任何提示**，
+> 表现是「Actions 里完全看不到这个 workflow」（No workflows found），
+> 排查起来极费时间。
 
 ---
 
