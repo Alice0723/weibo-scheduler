@@ -197,10 +197,18 @@ group('真实 HTTP 交互：mock 一个 OpenAI 兼容端点');
     });
   });
 
-  // 用一个临时的 raw-weibo.json 驱动
+  // 用临时的输入/输出文件驱动 —— 绝不能碰真实的数据文件！
+  // ⚠️ 之前直接写 data/raw-weibo.json 和 data/weibo-schedules.json，
+  //    结果每次跑测试都留下一个假的 weibo-schedules.json 待提交，
+  //    导致 git push 冲突（而且提交上去的是测试假数据，污染线上）。
   const fs = require('fs');
   const rawPath = path.join(REPO, 'data', 'raw-weibo.json');
-  const backup = fs.existsSync(rawPath) ? fs.readFileSync(rawPath, 'utf8') : null;
+  const outPath = path.join(REPO, 'data', 'weibo-schedules.json');
+
+  // 备份真实文件，跑完还原
+  const rawBackup = fs.existsSync(rawPath) ? fs.readFileSync(rawPath, 'utf8') : null;
+  const outBackup = fs.existsSync(outPath) ? fs.readFileSync(outPath, 'utf8') : null;
+
   fs.writeFileSync(rawPath, JSON.stringify({
     updatedAt: '2026-10-26T00:00:00.000Z',
     items: [
@@ -229,7 +237,6 @@ group('真实 HTTP 交互：mock 一个 OpenAI 兼容端点');
     ok('演唱会那条进了 LLM 请求', userMsg.includes('福州站'));
 
     // 产出文件
-    const outPath = path.join(REPO, 'data', 'weibo-schedules.json');
     const out = JSON.parse(fs.readFileSync(outPath, 'utf8'));
     ok('产出了 weibo-schedules.json', Array.isArray(out.items));
     ok('抽到了 1 条日程', out.items.length === 1, 'len=' + out.items.length);
@@ -238,9 +245,22 @@ group('真实 HTTP 交互：mock 一个 OpenAI 兼容端点');
     ok('场馆保留', out.items[0] && out.items[0].location === '福州海峡奥体中心体育场');
     ok('count 字段正确', out.count === out.items.length);
 
-    // 还原
-    if (backup !== null) fs.writeFileSync(rawPath, backup, 'utf8');
+    // ⚠️ 还原两个文件（不还原的话测试假数据会留在仓库里，
+    //    既是 git 冲突源，也会污染线上小程序读到的数据）
+    if (rawBackup !== null) fs.writeFileSync(rawPath, rawBackup, 'utf8');
     else { try { fs.unlinkSync(rawPath); } catch (e) {} }
+    if (outBackup !== null) fs.writeFileSync(outPath, outBackup, 'utf8');
+    else { try { fs.unlinkSync(outPath); } catch (e) {} }
+
+    // 防污染自检：还原后文件必须与备份完全一致
+    ok('输出文件已还原（没留下测试假数据）', (() => {
+      if (outBackup === null) return !fs.existsSync(outPath);
+      return fs.readFileSync(outPath, 'utf8') === outBackup;
+    })());
+    ok('输入文件已还原', (() => {
+      if (rawBackup === null) return !fs.existsSync(rawPath);
+      return fs.readFileSync(rawPath, 'utf8') === rawBackup;
+    })());
 
     console.log('\n========================================');
     console.log('PASS=' + pass + '  FAIL=' + fail);
