@@ -107,15 +107,32 @@ group('镜像回退');
     'https://raw.githubusercontent.com/{owner}/{repo}/main/data/weibo-schedules.json',
     'https://cdn.jsdelivr.net/gh/{owner}/{repo}@main/data/weibo-schedules.json',
     'https://fastly.jsdelivr.net/gh/{owner}/{repo}@main/data/weibo-schedules.json',
-    'https://ghproxy.net/https://raw.githubusercontent.com/{owner}/{repo}/main/data/weibo-schedules.json',
-    'https://mirror.ghproxy.com/https://raw.githubusercontent.com/{owner}/{repo}/main/data/weibo-schedules.json'
+    'https://ghproxy.net/https://raw.githubusercontent.com/{owner}/{repo}/main/data/weibo-schedules.json'
   ];
-  ok('共 5 个镜像', mirrors.length === 5);
+  ok('共 4 个镜像', mirrors.length === 4);
   ok('第一个是 GitHub 官方 raw', mirrors[0].includes('raw.githubusercontent.com'));
   ok('含 jsDelivr 国内可访问镜像', mirrors.filter(m=>m.includes('jsdelivr.net')).length === 2);
-  ok('含 ghproxy 代理兜底', mirrors.filter(m=>m.includes('ghproxy')).length === 2);
+  ok('含 ghproxy 代理兜底', mirrors.filter(m=>m.includes('ghproxy')).length === 1);
   ok('全部指向同一文件名', mirrors.every(m=>m.endsWith('weibo-schedules.json')));
   ok('占位符可被替换', mirrors.every(m=>m.includes('{owner}') && m.includes('{repo}')));
+
+  // ⚠️ 这些域名必须加进微信小程序的 request 合法域名白名单，
+  //    否则会报「不在以下 request 合法域名列表中」。
+  const NEED_IN_WHITELIST = [
+    'https://raw.githubusercontent.com',
+    'https://cdn.jsdelivr.net',
+    'https://fastly.jsdelivr.net',
+    'https://ghproxy.net'
+  ];
+  NEED_IN_WHITELIST.forEach((d) => {
+    ok('白名单清单含 ' + d, mirrors.some((m) => m.startsWith(d)));
+  });
+  ok('白名单域名不带端口（微信不允许带端口）',
+     NEED_IN_WHITELIST.every((d) => !d.replace('https://', '').includes(':')));
+  ok('白名单域名至少两段（微信不支持填父域名）',
+     NEED_IN_WHITELIST.every((d) => d.replace('https://', '').split('/')[0].split('.').length >= 2));
+  ok('白名单域名全是 https（微信只支持 https/wss）',
+     NEED_IN_WHITELIST.every((d) => d.startsWith('https://')));
 }
 
 group('类型对齐：微博抽出的 type 必须是现有日历认识的');

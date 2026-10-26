@@ -149,7 +149,31 @@ git push -u origin main
 
 ---
 
-### 第 4 步：接进小程序
+### 第 4 步：加微信小程序白名单（必做，否则小程序读不到）
+
+微信小程序只能请求「服务器域名」白名单里的域名。少了这一步会报：
+
+> https://raw.githubusercontent.com 不在以下 request 合法域名列表中
+
+**操作路径**：
+微信公众平台 → 你的小程序 → **开发管理** → **开发设置** → **服务器域名** → **request 合法域名** → 修改
+
+**填入这 4 个**（一行一个，只填域名、**不要带路径、不要带端口**）：
+
+```
+https://raw.githubusercontent.com
+https://cdn.jsdelivr.net
+https://fastly.jsdelivr.net
+https://ghproxy.net
+```
+
+> **加前两个就够用**，后两个是兜底（raw 完全不通时用）。
+> ⚠️ 域名不支持配置父域名，也不能带端口。
+> ⚠️ 每月可修改次数有限，别反复增删 —— 想好了再填。
+
+---
+
+### 第 5 步：接进小程序
 
 编辑 `miniprogram-1/utils/serverApi.js`，找到这两行：
 

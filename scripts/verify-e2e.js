@@ -257,10 +257,9 @@ group('镜像回退顺序');
     'https://raw.githubusercontent.com/{owner}/{repo}/main/data/weibo-schedules.json',
     'https://cdn.jsdelivr.net/gh/{owner}/{repo}@main/data/weibo-schedules.json',
     'https://fastly.jsdelivr.net/gh/{owner}/{repo}@main/data/weibo-schedules.json',
-    'https://ghproxy.net/https://raw.githubusercontent.com/{owner}/{repo}/main/data/weibo-schedules.json',
-    'https://mirror.ghproxy.com/https://raw.githubusercontent.com/{owner}/{repo}/main/data/weibo-schedules.json'
+    'https://ghproxy.net/https://raw.githubusercontent.com/{owner}/{repo}/main/data/weibo-schedules.json'
   ];
-  ok('有 5 个镜像可回退', mirrors.length === 5);
+  ok('有 4 个镜像可回退', mirrors.length === 4);
   ok('第一个是官方 raw（最权威）', mirrors[0].includes('raw.githubusercontent.com'));
   ok('有国内可访问的 CDN 镜像', mirrors.some(m=>m.includes('jsdelivr.net')));
   ok('有代理镜像兜底', mirrors.some(m=>m.includes('ghproxy')));
