@@ -1,25 +1,25 @@
 {
-  "updatedAt": "2026-10-26T16:49:46.169Z",
-  "updatedAtTs": 1793033386170,
+  "updatedAt": "2026-10-27T15:55:00.709Z",
+  "updatedAtTs": 1793116500710,
   "count": 1,
-  "rawUpdatedAt": "2026-10-26T16:49:42.606Z",
+  "rawUpdatedAt": "2026-10-27T15:54:54.492Z",
   "failedBatches": 0,
   "items": [
     {
       "date": "2026-10-27",
       "endDate": "",
-      "name": "《联名2》新专辑发行",
+      "name": "《联名2》好梦主打《多久没有谈天光》上线",
       "type": "song",
       "location": "",
       "songs": [
         "多久没有谈天光"
       ],
       "confidence": 1,
-      "reason": "原文明确提到明日12:00上线",
+      "reason": "原文明确提到歌曲上线日期为明日12:00",
       "sourceUrl": "https://m.weibo.cn/detail/Ror8lczMs",
       "sourceName": "汪苏泷Studio",
       "sourcePubTs": 1792987853000,
-      "extractedAt": 1793033386169
+      "extractedAt": 1793116500709
     }
   ]
 }
