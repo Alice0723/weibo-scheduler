@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-10-27T15:55:00.709Z",
-  "updatedAtTs": 1793116500710,
+  "updatedAt": "2026-10-28T16:42:05.542Z",
+  "updatedAtTs": 1793205725542,
   "count": 1,
-  "rawUpdatedAt": "2026-10-27T15:54:54.492Z",
+  "rawUpdatedAt": "2026-10-28T16:42:01.443Z",
   "failedBatches": 0,
   "items": [
     {
@@ -19,7 +19,7 @@
       "sourceUrl": "https://m.weibo.cn/detail/Ror8lczMs",
       "sourceName": "汪苏泷Studio",
       "sourcePubTs": 1792987853000,
-      "extractedAt": 1793116500709
+      "extractedAt": 1793205725542
     }
   ]
 }
