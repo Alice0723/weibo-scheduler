@@ -1,25 +1,23 @@
 {
-  "updatedAt": "2026-10-28T16:42:05.542Z",
-  "updatedAtTs": 1793205725542,
+  "updatedAt": "2026-10-29T16:58:34.060Z",
+  "updatedAtTs": 1793293114060,
   "count": 1,
-  "rawUpdatedAt": "2026-10-28T16:42:01.443Z",
+  "rawUpdatedAt": "2026-10-29T16:58:27.994Z",
   "failedBatches": 0,
   "items": [
     {
-      "date": "2026-10-27",
+      "date": "2026-11-01",
       "endDate": "",
-      "name": "《联名2》好梦主打《多久没有谈天光》上线",
-      "type": "song",
+      "name": "汪苏泷明日世界演唱会 太原站",
+      "type": "concert",
       "location": "",
-      "songs": [
-        "多久没有谈天光"
-      ],
-      "confidence": 1,
-      "reason": "原文明确提到歌曲上线日期为明日12:00",
-      "sourceUrl": "https://m.weibo.cn/detail/Ror8lczMs",
+      "songs": [],
+      "confidence": 0.9,
+      "reason": "微博发布于2026-10-29，内容提到11月1日",
+      "sourceUrl": "https://m.weibo.cn/detail/RoTltwOgu",
       "sourceName": "汪苏泷Studio",
-      "sourcePubTs": 1792987853000,
-      "extractedAt": 1793205725542
+      "sourcePubTs": 1793246409000,
+      "extractedAt": 1793293114060
     }
   ]
 }
