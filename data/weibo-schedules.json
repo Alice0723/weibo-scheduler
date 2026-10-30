@@ -1,23 +1,23 @@
 {
-  "updatedAt": "2026-10-29T16:58:34.060Z",
-  "updatedAtTs": 1793293114060,
+  "updatedAt": "2026-10-30T16:44:03.259Z",
+  "updatedAtTs": 1793378643259,
   "count": 1,
-  "rawUpdatedAt": "2026-10-29T16:58:27.994Z",
+  "rawUpdatedAt": "2026-10-30T16:43:55.976Z",
   "failedBatches": 0,
   "items": [
     {
-      "date": "2026-11-01",
-      "endDate": "",
-      "name": "汪苏泷明日世界演唱会 太原站",
+      "date": "2026-11-27",
+      "endDate": "2026-11-29",
+      "name": "汪苏泷明日世界巡回演唱会 杭州站",
       "type": "concert",
-      "location": "",
+      "location": "杭州奥体中心体育场（大莲花）",
       "songs": [],
-      "confidence": 0.9,
-      "reason": "微博发布于2026-10-29，内容提到11月1日",
-      "sourceUrl": "https://m.weibo.cn/detail/RoTltwOgu",
+      "confidence": 1,
+      "reason": "微博中明确提到演出日期为2026年11月27日至29日",
+      "sourceUrl": "https://m.weibo.cn/detail/Rp2nUoabi",
       "sourceName": "汪苏泷Studio",
-      "sourcePubTs": 1793246409000,
-      "extractedAt": 1793293114060
+      "sourcePubTs": 1793329252000,
+      "extractedAt": 1793378643258
     }
   ]
 }
