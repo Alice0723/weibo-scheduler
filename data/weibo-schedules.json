@@ -1,23 +1,23 @@
 {
-  "updatedAt": "2026-10-30T16:44:03.259Z",
-  "updatedAtTs": 1793378643259,
+  "updatedAt": "2026-10-31T15:46:34.284Z",
+  "updatedAtTs": 1793461594285,
   "count": 1,
-  "rawUpdatedAt": "2026-10-30T16:43:55.976Z",
+  "rawUpdatedAt": "2026-10-31T15:46:29.295Z",
   "failedBatches": 0,
   "items": [
     {
-      "date": "2026-11-27",
-      "endDate": "2026-11-29",
-      "name": "汪苏泷明日世界巡回演唱会 杭州站",
-      "type": "concert",
-      "location": "杭州奥体中心体育场（大莲花）",
+      "date": "2026-11-14",
+      "endDate": "2026-12-13",
+      "name": "《罗曼城·唤醒计划》杭州站",
+      "type": "xr",
+      "location": "高德置地广场L1中庭",
       "songs": [],
       "confidence": 1,
-      "reason": "微博中明确提到演出日期为2026年11月27日至29日",
-      "sourceUrl": "https://m.weibo.cn/detail/Rp2nUoabi",
+      "reason": "原文明确提到日期和地点",
+      "sourceUrl": "https://m.weibo.cn/detail/RpcctdNMa",
       "sourceName": "汪苏泷Studio",
-      "sourcePubTs": 1793329252000,
-      "extractedAt": 1793378643258
+      "sourcePubTs": 1793419209000,
+      "extractedAt": 1793461594284
     }
   ]
 }
