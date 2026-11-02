@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-11-01T16:50:25.652Z",
-  "updatedAtTs": 1793551825652,
+  "updatedAt": "2026-11-02T20:24:24.436Z",
+  "updatedAtTs": 1793651064436,
   "count": 1,
-  "rawUpdatedAt": "2026-11-01T16:50:21.963Z",
+  "rawUpdatedAt": "2026-11-02T20:24:20.796Z",
   "failedBatches": 0,
   "items": [
     {
@@ -17,7 +17,7 @@
       "sourceUrl": "https://m.weibo.cn/detail/Rp2nDjdPD",
       "sourceName": "汪苏泷",
       "sourcePubTs": 1793329211000,
-      "extractedAt": 1793551825652
+      "extractedAt": 1793651064436
     }
   ]
 }
