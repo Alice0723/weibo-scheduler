@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-11-05T18:05:41.009Z",
-  "updatedAtTs": 1793901941009,
+  "updatedAt": "2026-11-06T17:32:39.867Z",
+  "updatedAtTs": 1793986359868,
   "count": 1,
-  "rawUpdatedAt": "2026-11-05T18:05:36.694Z",
+  "rawUpdatedAt": "2026-11-06T17:32:33.168Z",
   "failedBatches": 0,
   "items": [
     {
@@ -13,11 +13,11 @@
       "location": "杭州奥体中心体育场（大莲花）",
       "songs": [],
       "confidence": 1,
-      "reason": "微博中明确提到具体日期和场馆",
-      "sourceUrl": "https://m.weibo.cn/detail/RpQaT1zT8",
+      "reason": "微博中明确提到演出日期为2026年11月27日-29日",
+      "sourceUrl": "https://m.weibo.cn/detail/Rq7a27xo2",
       "sourceName": "汪苏泷Studio",
-      "sourcePubTs": 1793785567000,
-      "extractedAt": 1793901941009
+      "sourcePubTs": 1793941243000,
+      "extractedAt": 1793986359867
     }
   ]
 }
