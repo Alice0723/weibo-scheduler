@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-11-09T20:48:59.526Z",
-  "updatedAtTs": 1794257339526,
+  "updatedAt": "2026-11-10T17:55:39.189Z",
+  "updatedAtTs": 1794333339189,
   "count": 1,
-  "rawUpdatedAt": "2026-11-09T20:48:55.189Z",
+  "rawUpdatedAt": "2026-11-10T17:55:33.013Z",
   "failedBatches": 0,
   "items": [
     {
@@ -14,10 +14,10 @@
       "songs": [],
       "confidence": 1,
       "reason": "微博中明确提到演出日期和场馆",
-      "sourceUrl": "https://m.weibo.cn/detail/RqzrLqOb8",
+      "sourceUrl": "https://m.weibo.cn/detail/RqISdg8eF",
       "sourceName": "汪苏泷Studio",
-      "sourcePubTs": 1794200479000,
-      "extractedAt": 1794257339526
+      "sourcePubTs": 1794286872000,
+      "extractedAt": 1794333339189
     }
   ]
 }
