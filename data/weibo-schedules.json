@@ -1,23 +1,23 @@
 {
-  "updatedAt": "2026-11-12T18:23:13.829Z",
-  "updatedAtTs": 1794507793830,
+  "updatedAt": "2026-11-13T17:50:28.754Z",
+  "updatedAtTs": 1794592228754,
   "count": 1,
-  "rawUpdatedAt": "2026-11-12T18:23:10.624Z",
+  "rawUpdatedAt": "2026-11-13T17:50:22.410Z",
   "failedBatches": 0,
   "items": [
     {
-      "date": "2026-11-13",
-      "endDate": "2026-11-15",
-      "name": "汪苏泷明日世界巡回演唱会福州站",
+      "date": "2026-11-14",
+      "endDate": "",
+      "name": "明日世界巡回演唱会 福州站",
       "type": "concert",
-      "location": "福州",
+      "location": "",
       "songs": [],
       "confidence": 1,
-      "reason": "微博中明确提到11月13日-11月15日",
-      "sourceUrl": "https://m.weibo.cn/detail/Rr5Gw3nT0",
+      "reason": "原文明确提到‘明日见’和‘明晚不见不散’，且发布时间为2026年11月13日，因此日期为2026年11月14日。",
+      "sourceUrl": "https://m.weibo.cn/detail/Rrf9G43xr",
       "sourceName": "汪苏泷Studio",
-      "sourcePubTs": 1794495933000,
-      "extractedAt": 1794507793829
+      "sourcePubTs": 1794582727000,
+      "extractedAt": 1794592228754
     }
   ]
 }
