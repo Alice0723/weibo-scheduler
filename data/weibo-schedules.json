@@ -1,23 +1,8 @@
 {
-  "updatedAt": "2026-11-17T19:13:43.568Z",
-  "updatedAtTs": 1794942823568,
-  "count": 1,
-  "rawUpdatedAt": "2026-11-17T19:13:37.188Z",
+  "updatedAt": "2026-11-18T18:53:15.608Z",
+  "updatedAtTs": 1795027995608,
+  "count": 0,
+  "rawUpdatedAt": "2026-11-18T18:53:10.902Z",
   "failedBatches": 0,
-  "items": [
-    {
-      "date": "2026-11-16",
-      "endDate": "",
-      "name": "明日世界巡回演唱会 福州站",
-      "type": "concert",
-      "location": "",
-      "songs": [],
-      "confidence": 1,
-      "reason": "微博发布于2026-11-15，内容提到‘明日世界’福州站，且发布时间在演唱会前一天，因此确定日期为2026-11-16。",
-      "sourceUrl": "https://m.weibo.cn/detail/RrzyYc4A3",
-      "sourceName": "汪苏泷Studio",
-      "sourcePubTs": 1794769762000,
-      "extractedAt": 1794942823567
-    }
-  ]
+  "items": []
 }
