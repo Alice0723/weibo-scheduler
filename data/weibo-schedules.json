@@ -1,23 +1,23 @@
 {
-  "updatedAt": "2026-11-19T19:02:06.279Z",
-  "updatedAtTs": 1795114926279,
+  "updatedAt": "2026-11-20T18:39:15.279Z",
+  "updatedAtTs": 1795199955279,
   "count": 1,
-  "rawUpdatedAt": "2026-11-19T19:02:02.719Z",
+  "rawUpdatedAt": "2026-11-20T18:39:10.403Z",
   "failedBatches": 0,
   "items": [
     {
-      "date": "2026-11-19",
-      "endDate": "",
-      "name": "汪苏泷明日世界巡回演唱会 杭州站",
-      "type": "concert",
-      "location": "HANGZHOU",
+      "date": "2026-11-25",
+      "endDate": "2026-12-08",
+      "name": "罗曼假日快闪活动",
+      "type": "flash",
+      "location": "杭州远洋乐堤港",
       "songs": [],
-      "confidence": 0.9,
-      "reason": "微博发布时间与演唱会日期一致",
-      "sourceUrl": "https://m.weibo.cn/detail/Rs5IgqWVH",
+      "confidence": 1,
+      "reason": "原文明确给出了活动日期和地点",
+      "sourceUrl": "https://m.weibo.cn/detail/RsgCbzy5o",
       "sourceName": "汪苏泷Studio",
-      "sourcePubTs": 1795064409000,
-      "extractedAt": 1795114926279
+      "sourcePubTs": 1795164324000,
+      "extractedAt": 1795199955279
     }
   ]
 }
