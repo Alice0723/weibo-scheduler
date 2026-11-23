@@ -1,23 +1,65 @@
 {
-  "updatedAt": "2026-11-22T17:52:52.234Z",
-  "updatedAtTs": 1795369972234,
-  "count": 1,
-  "rawUpdatedAt": "2026-11-22T17:52:47.802Z",
+  "updatedAt": "2026-11-23T22:05:21.881Z",
+  "updatedAtTs": 1795471521882,
+  "count": 4,
+  "rawUpdatedAt": "2026-11-23T22:05:07.722Z",
   "failedBatches": 0,
   "items": [
     {
       "date": "2026-11-25",
       "endDate": "2026-12-08",
-      "name": "汪苏泷明日世界巡回演唱会 罗曼星球品牌快闪店",
+      "name": "杭州罗曼城 第三弹 罗曼星球品牌快闪店",
       "type": "flash",
       "location": "杭州来福士中心 L1中庭",
       "songs": [],
       "confidence": 1,
-      "reason": "原文明确给出活动日期和地点",
-      "sourceUrl": "https://m.weibo.cn/detail/RspKpyRLE",
+      "reason": "原文明确给出了活动日期和地点。",
+      "sourceUrl": "https://m.weibo.cn/detail/RsHqmgyIE",
       "sourceName": "汪苏泷Studio",
-      "sourcePubTs": 1795248024000,
-      "extractedAt": 1795369972233
+      "sourcePubTs": 1795410026000,
+      "extractedAt": 1795471521875
+    },
+    {
+      "date": "2026-11-25",
+      "endDate": "2026-12-08",
+      "name": "杭州罗曼城 第二弹 「罗曼假日」主题快闪・杭州站",
+      "type": "flash",
+      "location": "杭州远洋乐堤港",
+      "songs": [],
+      "confidence": 1,
+      "reason": "原文明确给出了活动日期和地点。",
+      "sourceUrl": "https://m.weibo.cn/detail/RsGDEn01l",
+      "sourceName": "汪苏泷Studio",
+      "sourcePubTs": 1795402826000,
+      "extractedAt": 1795471521875
+    },
+    {
+      "date": "2026-12-25",
+      "endDate": "2026-12-27",
+      "name": "深圳・明日世界 跨年极致狂欢",
+      "type": "concert",
+      "location": "深圳大运中心体育场",
+      "songs": [],
+      "confidence": 1,
+      "reason": "原文明确给出了活动日期和地点。",
+      "sourceUrl": "https://m.weibo.cn/detail/RsGDCDPM8",
+      "sourceName": "汪苏泷Studio",
+      "sourcePubTs": 1795402822000,
+      "extractedAt": 1795471521875
+    },
+    {
+      "date": "2026-12-31",
+      "endDate": "2027-01-02",
+      "name": "深圳・明日世界 跨年极致狂欢",
+      "type": "concert",
+      "location": "深圳大运中心体育场",
+      "songs": [],
+      "confidence": 1,
+      "reason": "原文明确给出了活动日期和地点。",
+      "sourceUrl": "https://m.weibo.cn/detail/RsGDtqZ1W",
+      "sourceName": "汪苏泷",
+      "sourcePubTs": 1795402800000,
+      "extractedAt": 1795471521875
     }
   ]
 }
