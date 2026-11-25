@@ -1,51 +1,23 @@
 {
-  "updatedAt": "2026-11-24T20:41:54.567Z",
-  "updatedAtTs": 1795552914567,
-  "count": 3,
-  "rawUpdatedAt": "2026-11-24T20:41:39.790Z",
+  "updatedAt": "2026-11-25T19:58:23.697Z",
+  "updatedAtTs": 1795636703697,
+  "count": 1,
+  "rawUpdatedAt": "2026-11-25T19:58:17.870Z",
   "failedBatches": 0,
   "items": [
     {
       "date": "2026-11-25",
-      "endDate": "2026-11-25",
-      "name": "杭州罗曼星球品牌快闪店开放",
-      "type": "flash",
-      "location": "杭州来福士中心 L1中庭",
+      "endDate": "",
+      "name": "汪苏泷明日世界巡回演唱会 杭州站周边售卖",
+      "type": "merch",
+      "location": "杭州市·杭州奥体中心体育场（大莲花）—— 莲荷里B区B1层（奥体中心地铁站D3口旁、莲荷里南门进入）",
       "songs": [],
-      "confidence": 1,
-      "reason": "原文明确提到日期为2026年11月25日",
-      "sourceUrl": "https://m.weibo.cn/detail/RsQQTvtxb",
+      "confidence": 0.9,
+      "reason": "微博发布时间与活动时间一致",
+      "sourceUrl": "https://m.weibo.cn/detail/Rt31P89Kt",
       "sourceName": "汪苏泷Studio",
-      "sourcePubTs": 1795496432000,
-      "extractedAt": 1795552914559
-    },
-    {
-      "date": "2026-12-25",
-      "endDate": "2026-12-27",
-      "name": "深圳站演唱会",
-      "type": "concert",
-      "location": "深圳大运中心体育场",
-      "songs": [],
-      "confidence": 1,
-      "reason": "原文明确提到日期为2026年12月25日至27日",
-      "sourceUrl": "https://m.weibo.cn/detail/RsHqmgyIE",
-      "sourceName": "汪苏泷Studio",
-      "sourcePubTs": 1795410026000,
-      "extractedAt": 1795552914559
-    },
-    {
-      "date": "2026-12-31",
-      "endDate": "2027-01-02",
-      "name": "深圳站跨年演唱会",
-      "type": "concert",
-      "location": "深圳大运中心体育场",
-      "songs": [],
-      "confidence": 1,
-      "reason": "原文明确提到日期为2026年12月31日至2027年1月2日",
-      "sourceUrl": "https://m.weibo.cn/detail/RsGDEn01l",
-      "sourceName": "汪苏泷Studio",
-      "sourcePubTs": 1795402826000,
-      "extractedAt": 1795552914559
+      "sourcePubTs": 1795608025000,
+      "extractedAt": 1795636703696
     }
   ]
 }
