@@ -1,23 +1,23 @@
 {
-  "updatedAt": "2026-11-25T19:58:23.697Z",
-  "updatedAtTs": 1795636703697,
+  "updatedAt": "2026-11-26T19:41:51.711Z",
+  "updatedAtTs": 1795722111711,
   "count": 1,
-  "rawUpdatedAt": "2026-11-25T19:58:17.870Z",
+  "rawUpdatedAt": "2026-11-26T19:41:47.164Z",
   "failedBatches": 0,
   "items": [
     {
-      "date": "2026-11-25",
-      "endDate": "",
-      "name": "汪苏泷明日世界巡回演唱会 杭州站周边售卖",
-      "type": "merch",
-      "location": "杭州市·杭州奥体中心体育场（大莲花）—— 莲荷里B区B1层（奥体中心地铁站D3口旁、莲荷里南门进入）",
+      "date": "2026-11-27",
+      "endDate": "2026-11-29",
+      "name": "汪苏泷明日世界巡回演唱会 杭州站",
+      "type": "concert",
+      "location": "杭州",
       "songs": [],
-      "confidence": 0.9,
-      "reason": "微博发布时间与活动时间一致",
-      "sourceUrl": "https://m.weibo.cn/detail/Rt31P89Kt",
+      "confidence": 1,
+      "reason": "微博中明确提到 '11.27-11.29、12.04-12.06'",
+      "sourceUrl": "https://m.weibo.cn/detail/RtdSagmvi",
       "sourceName": "汪苏泷Studio",
-      "sourcePubTs": 1795608025000,
-      "extractedAt": 1795636703696
+      "sourcePubTs": 1795707410000,
+      "extractedAt": 1795722111710
     }
   ]
 }
